@@ -54,19 +54,23 @@ func initDB() {
 	dbUrl := os.Getenv("TURSO_DATABASE_URL")
 	dbToken := os.Getenv("TURSO_AUTH_TOKEN")
 
-	if dbUrl == "" {
-		dbUrl = "file:nxt.db"
-	} else {
+	// Wenn wir auf Render sind (URL vorhanden)
+	if dbUrl != "" {
+		// Der neue Treiber benötigt das Token direkt als Parameter in der URL
 		dbUrl = fmt.Sprintf("%s?authToken=%s", dbUrl, dbToken)
+	} else {
+		// Lokaler Fallback für deinen PC (ohne "file:" Präfix, nur der reine Dateiname)
+		dbUrl = "nxt.db"
 	}
 
-	// HIER ÄNDERN: "turso" statt "libsql" eintragen!
+	// 2. Verbindung mit dem neuen "turso" Treiber öffnen
 	var err error
 	db, err = sql.Open("turso", dbUrl)
 	if err != nil {
 		log.Fatalf("Fehler beim Öffnen der Turso-DB: %v", err)
 	}
 
+	// 3. Verbindung testen
 	err = db.Ping()
 	if err != nil {
 		log.Fatalf("Turso-Datenbank nicht erreichbar: %v", err)
