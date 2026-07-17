@@ -156,7 +156,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		projects = append(projects, p)
 	}
 
-	tmpl, err := template.ParseFiles("../frontend/templates/admin.html")
+	tmpl, err := template.ParseFiles("templates/admin.html")
 	if err != nil {
 		http.Error(w, "Admin şablonu bulunamadı.", http.StatusInternalServerError)
 		return
