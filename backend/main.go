@@ -22,19 +22,24 @@ func main() {
 	// 2. Routen aus routes.go registrieren (WICHTIG!)
 	setupRoutes()
 
-	// 3. Systemordner für Uploads und Styles garantieren
+	// 🔥 NEU & KRITISCH: Statische Dateien (CSS / JS) für den Browser freigeben
+	// Da main.go im Ordner 'backend' liegt, ist der relative Pfad einfach "static"
+	fs := http.FileServer(http.Dir("static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
+
 	// 3. Systemordner lokal im Render-Container garantieren
 	_ = os.MkdirAll("./static/images", os.ModePerm)
 	_ = os.MkdirAll("./static/css", os.ModePerm)
 	_ = os.MkdirAll("./templates", os.ModePerm)
 
-	// 4. Default-Firmendaten anlegen, falls Datei nicht existiert
-	if _, err := os.Stat("../backend/firmendaten.txt"); os.IsNotExist(err) {
+	// 4. KORRIGIERT: Pfad zu den Firmendaten korrigiert (ohne "../backend/")
+	// Da main.go bereits im Ordner 'backend' liegt, befindet sich die Datei im selben Verzeichnis
+	if _, err := os.Stat("firmendaten.txt"); os.IsNotExist(err) {
 		defaultData := "NEXTREKLAM kurumsal tabela imalatı ve iç mimarlık firmasıdır.\nAdres: Akıncılar, Çizmeci Sokak No.1, Güngören, İstanbul."
-		_ = os.WriteFile("../backend/firmendaten.txt", []byte(defaultData), 0644)
+		_ = os.WriteFile("firmendaten.txt", []byte(defaultData), 0644)
 	}
 
-	// 5.Port von Render auslesen (Fallback auf 10000, falls lokal)
+	// 5. Port von Render auslesen (Fallback auf 10000, falls lokal)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "10000"
@@ -42,6 +47,6 @@ func main() {
 
 	fmt.Printf("Server startet auf Port %s...\n", port)
 
-	// Startet den Server (Ersetze 'nil' durch deinen Router, falls du einen nutzt)
+	// Startet den Server mit dem korrekten DefaultServeMux (nil)
 	log.Fatal(http.ListenAndServe("0.0.0.0:"+port, nil))
 }

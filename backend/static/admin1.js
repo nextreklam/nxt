@@ -51,13 +51,20 @@ window.forceSessionLogout = function(redirectToHome) {
 async function loadChatLogs() {
   try {
     const response = await fetch('/api/admin/logs');
-    if (!response.ok) return;
+    if (!response.ok) {
+      console.error('API-Fehler:', response.status);
+      const tbody = document.getElementById('logTableBody');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="empty-list" style="color:var(--danger)">Loglar yüklenemedi (Sunucu Hatası: ' + response.status + ').</td></tr>';
+      return;
+    }
+    
     const logs = await response.json();
     const tbody = document.getElementById('logTableBody');
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    if (!logs || logs.length === 0) {
+    // Absicherung: Falls logs null, kein Array oder leer ist
+    if (!logs || !Array.isArray(logs) || logs.length === 0) {
       tbody.innerHTML = '<tr><td colspan="4" class="empty-list">Henüz kaydedilmiş bir chat logu bulunmuyor.</td></tr>';
       return;
     }
@@ -66,19 +73,19 @@ async function loadChatLogs() {
       const tr = document.createElement('tr');
       
       const tdID = document.createElement('td');
-      tdID.textContent = log.id;
+      tdID.textContent = log.id || '-';
       
       const tdIP = document.createElement('td');
       tdIP.className = 'ip-cell';
-      tdIP.textContent = log.user_ip;
+      tdIP.textContent = log.user_ip || '-';
       
       const tdOriginal = document.createElement('td');
       tdOriginal.className = 'original-cell';
-      tdOriginal.textContent = log.original_message;
+      tdOriginal.textContent = log.original_message || '-';
       
       const tdMasked = document.createElement('td');
       tdMasked.className = 'masked-cell';
-      tdMasked.textContent = log.masked_message;
+      tdMasked.textContent = log.masked_message || '-';
       
       tr.appendChild(tdID);
       tr.appendChild(tdIP);
@@ -89,6 +96,10 @@ async function loadChatLogs() {
     });
   } catch (error) {
     console.error('Logs yüklenirken hata oluştu:', error);
+    const tbody = document.getElementById('logTableBody');
+    if (tbody) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-list" style="color:var(--danger)">Loglar yüklenemedi (Bağlantı Hatası).</td></tr>';
+    }
   }
 }
 
