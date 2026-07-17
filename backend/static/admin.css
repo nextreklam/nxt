@@ -1,0 +1,302 @@
+:root {
+  --ink: #13192d;          
+  --line: #d8dde5;
+  --surface: #f5f7fa;
+  --panel: #ffffff;
+  --accent: #ff6a00;       
+  --danger: #dc2626;
+  --success: #16a34a;
+}
+
+* { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+}
+
+body { 
+  background: var(--surface); 
+  font-family: Arial, sans-serif; 
+  color: var(--ink); 
+  padding: 40px 20px; 
+}
+
+/* Main Content Layout */
+.admin-container { 
+  max-width: 900px; 
+  margin: 0 auto; 
+  background: var(--panel); 
+  padding: 30px; 
+  border-radius: 8px; 
+  border: 1px solid var(--line); 
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); 
+}
+
+h1, h2 { 
+  margin-bottom: 20px; 
+  font-size: 26px; 
+  border-bottom: 2px solid var(--accent); 
+  padding-bottom: 10px; 
+}
+
+h2 { 
+  margin-top: 40px; 
+  font-size: 22px; 
+  border-bottom-color: var(--line); 
+}
+
+.form-group { 
+  margin-bottom: 18px; 
+}
+
+label { 
+  display: block; 
+  margin-bottom: 6px; 
+  font-weight: bold; 
+  font-size: 14px; 
+}
+
+input[type="text"], 
+textarea, 
+input[type="file"] { 
+  width: 100%; 
+  padding: 10px; 
+  border: 1px solid var(--line); 
+  border-radius: 4px; 
+  font-size: 15px; 
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+input[type="text"]:focus, 
+textarea:focus { 
+  border-color: var(--accent); 
+}
+
+button { 
+  background: var(--accent); 
+  color: white; 
+  border: none; 
+  padding: 12px 20px; 
+  border-radius: 4px; 
+  font-weight: bold; 
+  cursor: pointer; 
+  font-size: 16px; 
+  width: 100%; 
+  margin-top: 10px; 
+  transition: background 0.2s ease;
+}
+
+button:hover { 
+  background: #e05d00; 
+}
+
+.nav-links { 
+  margin-bottom: 20px; 
+  display: flex; 
+  gap: 15px; 
+  justify-content: space-between; 
+  align-items: center; 
+}
+
+.nav-links a { 
+  color: var(--accent); 
+  text-decoration: none; 
+  font-weight: bold; 
+}
+
+.nav-links a:hover {
+  text-decoration: underline;
+}
+
+.btn-logout { 
+  background: none; 
+  color: var(--danger); 
+  border: none; 
+  padding: 0; 
+  font-size: 14px; 
+  font-weight: bold; 
+  width: auto; 
+  margin: 0; 
+  cursor: pointer; 
+  text-decoration: none; 
+}
+
+.btn-logout:hover {
+  text-decoration: underline;
+}
+
+/* Project & Log Lists */
+.project-list { 
+  width: 100%; 
+  border-collapse: collapse; 
+  margin-top: 15px; 
+  font-size: 15px; 
+}
+
+.project-list th, 
+.project-list td { 
+  padding: 12px; 
+  border-bottom: 1px solid var(--line); 
+  text-align: left; 
+}
+
+.project-list th { 
+  background: #f8fafc; 
+  font-weight: bold; 
+}
+
+.btn-delete { 
+  background: var(--danger); 
+  padding: 6px 12px; 
+  font-size: 13px; 
+  width: auto; 
+  margin: 0; 
+  color: white; 
+  border-radius: 4px; 
+  border: none; 
+  cursor: pointer; 
+  transition: background 0.2s ease;
+}
+
+.btn-delete:hover { 
+  background: #b91c1c; 
+}
+
+.empty-list { 
+  text-align: center; 
+  color: #94a3b8; 
+  padding: 20px; 
+  font-style: italic; 
+}
+
+/* Log Table Styles */
+.ip-cell { 
+  font-family: monospace; 
+  color: #64748b; 
+}
+
+.original-cell { 
+  font-weight: bold; 
+  color: #b91c1c; 
+}
+
+.masked-cell { 
+  color: var(--success); 
+}
+
+/* Bilder-Vorschau im Edit-Modus */
+.edit-preview-container { 
+  display: flex; 
+  gap: 10px; 
+  flex-wrap: wrap; 
+  margin-top: 10px; 
+  background: #f8fafc; 
+  padding: 10px; 
+  border-radius: 4px; 
+  border: 1px solid var(--line); 
+}
+
+.preview-box { 
+  position: relative; 
+  width: 80px; 
+  height: 80px; 
+  border-radius: 4px; 
+  overflow: hidden; 
+  border: 1px solid var(--line); 
+}
+
+.preview-box img, 
+.preview-box video { 
+  width: 100%; 
+  height: 100%; 
+  object-fit: cover; 
+}
+
+.btn-mini-delete { 
+  position: absolute; 
+  top: 2px; 
+  right: 2px; 
+  background: var(--danger); 
+  color: white; 
+  border: none; 
+  border-radius: 50%; 
+  width: 18px; 
+  height: 18px; 
+  font-size: 11px; 
+  cursor: pointer; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  font-weight: bold; 
+}
+
+/* Prompt Editor Modal */
+.prompt-modal { 
+  display: none; 
+  position: fixed; 
+  top: 0; 
+  left: 0; 
+  width: 100%; 
+  height: 100%; 
+  background: rgba(19, 25, 45, 0.6); 
+  z-index: 3000; 
+  justify-content: center; 
+  align-items: center; 
+  backdrop-filter: blur(4px); 
+}
+
+.prompt-modal-content { 
+  background: var(--panel); 
+  width: 90%; 
+  max-width: 700px; 
+  padding: 30px; 
+  border-radius: 8px; 
+  border: 1px solid var(--line); 
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); 
+  display: flex; 
+  flex-direction: column; 
+  gap: 15px; 
+}
+
+.prompt-textarea { 
+  width: 100%; 
+  height: 350px; 
+  padding: 15px; 
+  border: 1px solid var(--line); 
+  border-radius: 4px; 
+  font-family: monospace; 
+  font-size: 14px; 
+  line-height: 1.5; 
+  resize: vertical; 
+  outline: none; 
+}
+
+.prompt-textarea:focus {
+  border-color: var(--accent);
+}
+
+.prompt-btn-group { 
+  display: flex; 
+  gap: 10px; 
+  justify-content: flex-end; 
+}
+
+.btn-prompt-open { 
+  background: #1e293b; 
+  color: white; 
+  border: none; 
+  padding: 8px 16px; 
+  border-radius: 4px; 
+  font-weight: bold; 
+  cursor: pointer; 
+  font-size: 14px; 
+  width: auto; 
+  margin: 0; 
+  transition: background 0.2s ease;
+}
+
+.btn-prompt-open:hover { 
+  background: #0f172a; 
+}
