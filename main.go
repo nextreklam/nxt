@@ -60,7 +60,7 @@ func initDB() {
 		if strings.HasPrefix(dbUrl, "libsql://") {
 			dbUrl = strings.Replace(dbUrl, "libsql://", "https://", 1)
 		}
-		
+
 		// Token wie gewohnt anhängen
 		dbUrl = fmt.Sprintf("%s?authToken=%s", dbUrl, dbToken)
 	} else {
@@ -82,7 +82,6 @@ func initDB() {
 	}
 
 	fmt.Println("Erfolgreich mit Turso-Datenbank verbunden!")
-}
 
 	// 2. Tabellen für Projekte, Chat-Logs und Zusammenfassungen einzeln anlegen
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS projects (
