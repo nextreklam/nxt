@@ -6,6 +6,10 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
+
+	// WICHTIG: Stellen Sie sicher, dass dieser Import exakt so auch in der main.go steht!
+	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
 
 var db *sql.DB
@@ -15,25 +19,30 @@ func initDB() {
 	dbToken := os.Getenv("TURSO_AUTH_TOKEN")
 
 	if dbUrl != "" {
-		// WICHTIG: Wenn die URL mit "libsql://" beginnt, ersetzen wir es durch "https://"
-		// Das zwingt das neue SDK, eine reine Online-Netzwerkverbindung aufzubauen.
+		// Wenn die URL mit "libsql://" beginnt, ersetzen wir es durch "https://"
+		// Das zwingt das SDK, eine reine Online-Netzwerkverbindung aufzubauen.
 		if strings.HasPrefix(dbUrl, "libsql://") {
 			dbUrl = strings.Replace(dbUrl, "libsql://", "https://", 1)
 		}
 
-		// Token wie gewohnt anhängen
+		// Token sicher an die URL anhängen
 		dbUrl = fmt.Sprintf("%s?authToken=%s", dbUrl, dbToken)
 	} else {
-		// Lokaler Fallback für deinen PC
-		dbUrl = "nxt.db"
+		// Lokaler Fallback für die Entwicklung auf dem PC
+		dbUrl = "file:nxt.db" // KORRIGIERT: "file:" Präfix für lokale SQLite-Kompatibilität im Treiber
 	}
 
-	// 2. Verbindung mit dem "turso" Treiber öffnen
 	var err error
+	// Verbindung mit dem offiziellen "libsql" Treiber öffnen
 	db, err = sql.Open("libsql", dbUrl)
 	if err != nil {
 		log.Fatalf("Fehler beim Öffnen der Turso-DB: %v", err)
 	}
+
+	// 🔥 NEU: Connection Pooling einrichten (Verhindert Abstürze bei hoher Last)
+	db.SetMaxOpenConns(10)                  // Maximal 10 gleichzeitige offene Verbindungen zu Turso
+	db.SetMaxIdleConns(5)                   // Maximal 5 ungenutzte Verbindungen im Pool behalten
+	db.SetConnMaxLifetime(30 * time.Minute) // Verbindungen nach 30 Minuten erneuern
 
 	// 3. Verbindung testen
 	err = db.Ping()
@@ -43,7 +52,7 @@ func initDB() {
 
 	fmt.Println("Erfolgreich mit Turso-Datenbank verbunden!")
 
-	// 2. Tabellen für Projekte, Chat-Logs und Zusammenfassungen einzeln anlegen
+	// 4. Tabellen-Strukturen absichern
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS projects (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		folder TEXT,

@@ -19,21 +19,15 @@ func main() {
 	// 1. Turso-Datenbank mit Token korrekt öffnen
 	initDB()
 
-	// 2. Routen aus routes.go registrieren (WICHTIG!)
+	// 2. Routen aus routes.go registrieren (Hier wird /static/ bereits registriert!)
 	setupRoutes()
-
-	// 🔥 NEU & KRITISCH: Statische Dateien (CSS / JS) für den Browser freigeben
-	// Da main.go im Ordner 'backend' liegt, ist der relative Pfad einfach "static"
-	fs := http.FileServer(http.Dir("static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	// 3. Systemordner lokal im Render-Container garantieren
 	_ = os.MkdirAll("./static/images", os.ModePerm)
 	_ = os.MkdirAll("./static/css", os.ModePerm)
 	_ = os.MkdirAll("./templates", os.ModePerm)
 
-	// 4. KORRIGIERT: Pfad zu den Firmendaten korrigiert (ohne "../backend/")
-	// Da main.go bereits im Ordner 'backend' liegt, befindet sich die Datei im selben Verzeichnis
+	// 4. Pfad zu den Firmendaten (main.go liegt im Ordner 'backend')
 	if _, err := os.Stat("firmendaten.txt"); os.IsNotExist(err) {
 		defaultData := "NEXTREKLAM kurumsal tabela imalatı ve iç mimarlık firmasıdır.\nAdres: Akıncılar, Çizmeci Sokak No.1, Güngören, İstanbul."
 		_ = os.WriteFile("firmendaten.txt", []byte(defaultData), 0644)
@@ -47,6 +41,6 @@ func main() {
 
 	fmt.Printf("Server startet auf Port %s...\n", port)
 
-	// Startet den Server mit dem korrekten DefaultServeMux (nil)
+	// Startet den Server
 	log.Fatal(http.ListenAndServe("0.0.0.0:"+port, nil))
 }

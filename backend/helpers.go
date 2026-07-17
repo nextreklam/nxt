@@ -14,15 +14,12 @@ import (
 
 // 7. HILFSFUNKTION FÜR DATENSCHUTZ (PII Maskierung)
 func maskPII(text string) string {
-	// E-Mails maskieren
 	emailRegex := regexp.MustCompile(`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`)
 	text = emailRegex.ReplaceAllString(text, "[MASKED_EMAIL]")
 
-	// Telefonnummern (Türkische Mobil- und Festnetzformate) maskieren
 	phoneRegex := regexp.MustCompile(`(\+90|0)?\s*(\d{3})\s*(\d{3})\s*(\d{2})\s*(\d{2})|\d{10,11}`)
 	text = phoneRegex.ReplaceAllString(text, "[MASKED_PHONE]")
 
-	// Adressen maskieren (einfache heuristische Annäherung)
 	addressRegex := regexp.MustCompile(`\d{1,5}\s+\w+(\s+\w+)*`)
 	text = addressRegex.ReplaceAllString(text, "[MASKED_ADDRESS]")
 	return text
@@ -68,7 +65,6 @@ func updateConversationSummary(userIP, userMsg, botResp string) {
 		return
 	}
 
-	// KORRIGIERT: Sicheres Type-Casting für das Array-Mapping (Verhindert Abstürze im Hintergrund)
 	if choices, ok := result["choices"].([]interface{}); ok && len(choices) > 0 {
 		if firstChoice, ok := choices[0].(map[string]interface{}); ok {
 			if msg, ok := firstChoice["message"].(map[string]interface{}); ok {
@@ -86,11 +82,9 @@ func updateConversationSummary(userIP, userMsg, botResp string) {
 
 func basicAuthWrapper(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// 1. Abfangen von typischen Browser-Assets
+		// KORRIGIERT: Keine pauschale Blockierung mehr von Assets, falls diese über das /admin/-Präfix geroutet werden
 		if strings.HasSuffix(r.URL.Path, ".png") ||
-			strings.HasSuffix(r.URL.Path, ".ico") ||
-			strings.HasSuffix(r.URL.Path, ".css") ||
-			strings.HasSuffix(r.URL.Path, ".js") {
+			strings.HasSuffix(r.URL.Path, ".ico") {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
@@ -106,19 +100,16 @@ func basicAuthWrapper(next http.HandlerFunc) http.HandlerFunc {
 		username, password, ok := r.BasicAuth()
 
 		if !ok || username != expectedUser || password != expectedPass {
-			// 2. PRÜFUNG: Kommt der Request von einem JavaScript (Fetch/XHR) oder ist es ein API-Pfad?
 			isAPI := strings.HasPrefix(r.URL.Path, "/api/") ||
 				r.Header.Get("X-Requested-With") == "XMLHttpRequest" ||
 				strings.Contains(r.Header.Get("Accept"), "application/json")
 
 			if isAPI {
-				// Bei APIs: Sende KEIN WWW-Authenticate! Das verhindert das Browser-Fenster.
 				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte("Zweit-Anfrage blockiert (API-Schutz)"))
+				_, _ = w.Write([]byte("Zweit-Anfrage blockiert (API-Schutz)"))
 				return
 			}
 
-			// Nur für den allerersten echten Seitenaufruf (/admin) das Fenster erzwingen
 			w.Header().Set("WWW-Authenticate", `Basic realm="NEXTREKLAM Admin Panel"`)
 			http.Error(w, "Yetkisiz Erişim!", http.StatusUnauthorized)
 			return
@@ -137,14 +128,13 @@ func getPromptHandler(w http.ResponseWriter, r *http.Request) {
 
 	content, err := os.ReadFile("firmendaten.txt")
 	if err != nil {
-		// Falls die Datei fehlt, leere Antwort senden statt Absturz
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"content": ""})
+		_ = json.NewEncoder(w).Encode(map[string]string{"content": ""})
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"content": string(content)})
+	_ = json.NewEncoder(w).Encode(map[string]string{"content": string(content)})
 }
 
 // 10. API HANDLER: FIRMENDATEN.TXT SPEICHERN (POST)
@@ -164,7 +154,6 @@ func savePromptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Schreibt den neuen Prompt-Inhalt direkt live in die Datei auf dem Server
 	err := os.WriteFile("firmendaten.txt", []byte(req.Content), 0644)
 	if err != nil {
 		http.Error(w, "Dosya kaydedilemedi", http.StatusInternalServerError)
@@ -172,10 +161,10 @@ func savePromptHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	_, _ = w.Write([]byte("OK"))
 }
 
-// 11. DYNAMISCHE XML SITEMAP FÜR GOOGLE & CO. (VOLLSTÄNDIG KORRIGIERT)
+// 11. DYNAMISCHE XML SITEMAP FÜR GOOGLE & CO.
 func sitemapHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 
@@ -185,24 +174,22 @@ func sitemapHandler(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<url><loc>https://nextreklam.com.tr</loc><priority>1.0</priority><changefreq>daily</changefreq></url>`)
 	sb.WriteString(`<url><loc>https://nextreklam.com.tr/galeri</loc><priority>0.8</priority><changefreq>weekly</changefreq></url>`)
 
-	// Dynamisch alle Projekte aus der DB für Google auflisten
 	rows, err := db.Query("SELECT folder FROM projects")
 	if err == nil {
 		defer rows.Close()
 		for rows.Next() {
 			var folder string
 			if err := rows.Scan(&folder); err == nil {
-				// ERZWUNGEN: Jedes Projekt wird nun mit der sauberen Linkstruktur "/galeri/ordnername" ausgegeben
 				sb.WriteString(fmt.Sprintf("<url><loc>https://nextreklam.com.tr/galeri/%s</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>", folder))
 			}
 		}
 	}
 
 	sb.WriteString(`</urlset>`)
-	w.Write([]byte(sb.String()))
+	_, _ = w.Write([]byte(sb.String()))
 }
 
-// hashUserIP erzeugt eine eindeutige, DSGVO-konforme ID aus der IP-Adresse
+// DSGVO-konformer IP-Hash
 func hashUserIP(ipStr string) string {
 	ipOnly, _, err := net.SplitHostPort(ipStr)
 	if err != nil {
@@ -210,16 +197,12 @@ func hashUserIP(ipStr string) string {
 	}
 	ipOnly = strings.TrimSpace(ipOnly)
 
-	// Sicherer Fallback, falls die .env beim Serverstart nicht geladen wurde
 	salt := os.Getenv("SECRET_SALT")
 	if salt == "" {
 		salt = "NEXTREKLAM_Secret_Salt"
 	}
 
-	// IP und Salt kombinieren und hashen
 	hash := sha256.Sum256([]byte(ipOnly + salt))
-
-	// Gibt eine 16-stellige eindeutige ID zurück (z.B. "a3f9b2c8e1d4f6a0")
 	return fmt.Sprintf("%x", hash)[:16]
 }
 
@@ -227,7 +210,6 @@ func corsGuard(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 
-		// Erlaubt Anfragen von deiner Güzel-Domain und lokalen Testumgebungen
 		if origin != "" {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
@@ -235,7 +217,6 @@ func corsGuard(next http.HandlerFunc) http.HandlerFunc {
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
 
-		// ABSOLUT KRITISCH: OPTIONS Preflight muss SOFORT mit 200 OK antworten und darf nicht zum Handler weitergehen!
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return

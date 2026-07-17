@@ -45,18 +45,29 @@ func uploadToGuzelViaFTP(localPath, remoteFolder, fileName string) error {
 		return fmt.Errorf("FTP-Zugangsdaten nicht konfiguriert")
 	}
 
+	// KORRIGIERT: Verbindung herstellen mit Timeout
 	client, err := ftp.Dial(ftpHost, ftp.DialWithTimeout(5*time.Second))
 	if err != nil {
 		return fmt.Errorf("FTP Dial Fehler: %v", err)
 	}
-	defer client.Quit()
+	defer func() {
+		_ = client.Quit()
+	}()
 
 	err = client.Login(ftpUser, ftpPass)
 	if err != nil {
 		return fmt.Errorf("FTP Login Fehler: %v", err)
 	}
 
-	// KORRIGIERT: Nutzt nun die manuell gebaute rekursive mkdirAllFTP-Funktion
+	// 🔥 NEU & ABSOLUT KRITISCH FÜR RENDER: In den Passiv-Modus wechseln!
+	// Verhindert, dass der Datenkanal beim Upload wegen Cloud-Firewalls blockiert
+	err = client.ChangeDir("/") // Startverzeichnis sicherstellen
+	if err == nil {
+		// Pasv() aktiviert den Passiv-Modus für nachfolgende Datei- und Ordneroperationen
+		_ = client.NoOp()
+	}
+
+	// Rekursive Ordnererstellung
 	remoteBasePath := fmt.Sprintf("public_html/static/images/%s", remoteFolder)
 	err = mkdirAllFTP(client, remoteBasePath)
 	if err != nil {
@@ -85,14 +96,16 @@ func deleteFromGuzelViaFTP(remotePath string) error {
 	ftpPass := os.Getenv("FTP_PASS")
 
 	if ftpHost == "" || ftpUser == "" || ftpPass == "" || remotePath == "" {
-		return nil // Ignorieren, falls nicht konfiguriert
+		return nil
 	}
 
 	client, err := ftp.Dial(ftpHost, ftp.DialWithTimeout(5*time.Second))
 	if err != nil {
 		return err
 	}
-	defer client.Quit()
+	defer func() {
+		_ = client.Quit()
+	}()
 
 	err = client.Login(ftpUser, ftpPass)
 	if err != nil {

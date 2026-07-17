@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -26,7 +27,6 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		date := r.FormValue("date")
 		desc := r.FormValue("desc")
 
-		// Ermittelt den dynamischen lokalen Zielordner auf Render
 		baseDir := "static"
 		if _, err := os.Stat("backend"); err == nil {
 			baseDir = "backend/static"
@@ -34,7 +34,6 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		projectFolder := filepath.Join(baseDir, "images", folder)
 		_ = os.MkdirAll(projectFolder, os.ModePerm)
 
-		// Hauptbild verarbeiten
 		var mainImgPath string
 		file, header, err := r.FormFile("mainImage")
 		if err == nil {
@@ -50,7 +49,6 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 				_, _ = io.Copy(out, file)
 				mainImgPath = "/static/images/" + folder + "/" + fileName
 
-				// Live-FTP-Upload zu Güzel im Hintergrund
 				go func() {
 					errUpload := uploadToGuzelViaFTP(targetPath, folder, fileName)
 					if errUpload != nil {
@@ -62,38 +60,38 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Mehrfach-Galerie verarbeiten
 		var galleryPaths []string
 		files := r.MultipartForm.File["galleryMedia"]
 		for i, fHeader := range files {
-			f, err := fHeader.Open()
-			if err != nil {
-				continue
-			}
-			defer f.Close()
+			// KORRIGIERT: Typ von *filepath.Header auf *multipart.FileHeader geändert
+			func(index int, fh *multipart.FileHeader) {
+				f, err := fh.Open()
+				if err != nil {
+					return
+				}
+				defer f.Close() // Schließt das Handle sofort nach diesem Durchlauf!
 
-			ext := filepath.Ext(fHeader.Filename)
-			fileNameClean := fmt.Sprintf("%s_gal_%d_%d%s", folder, i, time.Now().UnixNano()%1000, ext)
-			targetPath := filepath.Join(projectFolder, fileNameClean)
+				ext := filepath.Ext(fh.Filename)
+				fileNameClean := fmt.Sprintf("%s_gal_%d_%d%s", folder, index, time.Now().UnixNano()%1000, ext)
+				targetPath := filepath.Join(projectFolder, fileNameClean)
 
-			out, err := os.Create(targetPath)
-			if err == nil {
-				defer out.Close()
-				_, _ = io.Copy(out, f)
-				galleryPaths = append(galleryPaths, "/static/images/"+folder+"/"+fileNameClean)
+				out, err := os.Create(targetPath)
+				if err == nil {
+					defer out.Close()
+					_, _ = io.Copy(out, f)
+					galleryPaths = append(galleryPaths, "/static/images/"+folder+"/"+fileNameClean)
 
-				// Live-FTP-Upload zu Güzel im Hintergrund
-				go func(p, fn string) {
-					errUpload := uploadToGuzelViaFTP(p, folder, fn)
-					if errUpload != nil {
-						log.Println("Kritischer FTP-Fehler für Galeriebild:", errUpload)
-					}
-				}(targetPath, fileNameClean)
-			}
+					go func(p, fn string) {
+						errUpload := uploadToGuzelViaFTP(p, folder, fn)
+						if errUpload != nil {
+							log.Println("Kritischer FTP-Fehler für Galeriebild:", errUpload)
+						}
+					}(targetPath, fileNameClean)
+				}
+			}(i, fHeader)
 		}
 		gallerySerialized := strings.Join(galleryPaths, ",")
 
-		// In DB speichern
 		_, err = db.Exec("INSERT INTO projects (folder, title, date, desc, main_img, gallery) VALUES (?, ?, ?, ?, ?, ?)",
 			folder, title, date, desc, mainImgPath, gallerySerialized)
 		if err != nil {
@@ -105,7 +103,6 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// GET: Liste für das Dashboard laden
 	rows, err := db.Query("SELECT id, folder, title, date, desc, main_img, gallery FROM projects ORDER BY id DESC")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -124,7 +121,6 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		projects = append(projects, p)
 	}
 
-	// Flexible Pfad-Weiche für das HTML-Template
 	var tmpl *template.Template
 	if _, errStat := os.Stat("templates/admin.html"); errStat == nil {
 		tmpl, err = template.ParseFiles("templates/admin.html")
@@ -141,205 +137,8 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, projects)
 }
 
-// 4. DELETE PROJECT HANDLER (Löscht Projekt aus DB und bereinigt Medien via FTP)
-func deleteHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Geçersiz işlem", http.StatusMethodNotAllowed)
-		return
-	}
-	id := r.FormValue("id")
-
-	// Medienpfade vor dem Löschen aus der DB holen
-	var mainImg, galleryStr string
-	_ = db.QueryRow("SELECT main_img, gallery FROM projects WHERE id = ?", id).Scan(&mainImg, &galleryStr)
-
-	_, err := db.Exec("DELETE FROM projects WHERE id = ?", id)
-	if err != nil {
-		http.Error(w, "Silme işlemi başarısız", http.StatusInternalServerError)
-		return
-	}
-
-	// Medien asynchron vom Güzel-Server via FTP löschen
-	go func(main string, gal string) {
-		if main != "" {
-			_ = deleteFromGuzelViaFTP(main)
-		}
-		if gal != "" {
-			paths := strings.Split(gal, ",")
-			for _, p := range paths {
-				if p != "" {
-					_ = deleteFromGuzelViaFTP(p)
-				}
-			}
-		}
-	}(mainImg, galleryStr)
-
-	http.Redirect(w, r, "/admin/", http.StatusSeeOther)
-}
-
-// 4a. UPDATE PROJECT HANDLER (Texte aktualisieren + ALTES BILD LÖSCHEN + FTP SYNC)
-func updateHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Geçersiz işlem", http.StatusMethodNotAllowed)
-		return
-	}
-
-	id := r.FormValue("id")
-	folder := r.FormValue("folder")
-	title := r.FormValue("title")
-	date := r.FormValue("date")
-	desc := r.FormValue("desc")
-
-	var existingGallery, existingMainImg string
-	_ = db.QueryRow("SELECT main_img, gallery FROM projects WHERE id = ?", id).Scan(&existingMainImg, &existingGallery)
-
-	_ = r.ParseMultipartForm(100 << 20)
-
-	baseDir := "static"
-	if _, err := os.Stat("backend"); err == nil {
-		baseDir = "backend/static"
-	}
-	projectFolder := filepath.Join(baseDir, "images", folder)
-	_ = os.MkdirAll(projectFolder, os.ModePerm)
-
-	finalMainImg := existingMainImg
-	mainFile, mainHeader, err := r.FormFile("mainImage")
-	if err == nil {
-		defer mainFile.Close()
-		mainExt := filepath.Ext(mainHeader.Filename)
-		mainFileName := fmt.Sprintf("%s_main_%d%s", folder, time.Now().UnixNano()%1000, mainExt)
-		mainTargetPath := filepath.Join(projectFolder, mainFileName)
-
-		mainOut, err := os.Create(mainTargetPath)
-		if err == nil {
-			defer mainOut.Close()
-			_, _ = io.Copy(mainOut, mainFile)
-			finalMainImg = "/static/images/" + folder + "/" + mainFileName
-
-			// Live-FTP-Upload für das neue Hauptbild zu Güzel
-			go func() {
-				_ = uploadToGuzelViaFTP(mainTargetPath, folder, mainFileName)
-			}()
-
-			// Altes Hauptbild von Güzel und lokal löschen
-			if existingMainImg != "" {
-				go func(oldPath string) {
-					_ = deleteFromGuzelViaFTP(oldPath)
-				}(existingMainImg)
-				oldLocalPath := filepath.Join(baseDir, "images", strings.TrimPrefix(existingMainImg, "/static/images/"))
-				_ = os.Remove(oldLocalPath)
-			}
-		}
-	}
-
-	var newGalleryPaths []string
-	files := r.MultipartForm.File["galleryMedia"]
-	for i, fHeader := range files {
-		f, err := fHeader.Open()
-		if err != nil {
-			continue
-		}
-		defer f.Close()
-
-		ext := filepath.Ext(fHeader.Filename)
-		fileNameClean := fmt.Sprintf("%s_gal_%d_%d%s", folder, i, time.Now().UnixNano()%1000, ext)
-		targetPath := filepath.Join(projectFolder, fileNameClean)
-
-		out, err := os.Create(targetPath)
-		if err == nil {
-			defer out.Close()
-			_, _ = io.Copy(out, f)
-			newGalleryPaths = append(newGalleryPaths, "/static/images/"+folder+"/"+fileNameClean)
-
-			// Live-FTP-Upload für neue Galeriebilder zu Güzel
-			go func(p, fn string) {
-				_ = uploadToGuzelViaFTP(p, folder, fn)
-			}(targetPath, fileNameClean)
-		}
-	}
-
-	finalGallery := existingGallery
-	if len(newGalleryPaths) > 0 {
-		newSerialized := strings.Join(newGalleryPaths, ",")
-		if finalGallery != "" {
-			finalGallery += "," + newSerialized
-		} else {
-			finalGallery = newSerialized
-		}
-	}
-
-	_, err = db.Exec("UPDATE projects SET folder = ?, title = ?, date = ?, desc = ?, main_img = ?, gallery = ? WHERE id = ?",
-		folder, title, date, desc, finalMainImg, finalGallery, id)
-	if err != nil {
-		http.Error(w, "Güncelleme hatası", http.StatusInternalServerError)
-		return
-	}
-
-	http.Redirect(w, r, "/admin/", http.StatusSeeOther)
-}
-
-// 4d. EINZELNES BILD AUS DB LÖSCHEN (AJAX + FTP SYNC)
-func deleteMediaHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Geçersiz işlem", http.StatusMethodNotAllowed)
-		return
-	}
-
-	id := r.FormValue("id")
-	mediaPath := r.FormValue("path")
-	targetType := r.FormValue("type")
-
-	if targetType == "main" {
-		_, err := db.Exec("UPDATE projects SET main_img = '' WHERE id = ?", id)
-		if err != nil {
-			http.Error(w, "Ana görsel silme hatası", http.StatusInternalServerError)
-			return
-		}
-	} else {
-		var galleryStr string
-		err := db.QueryRow("SELECT gallery FROM projects WHERE id = ?", id).Scan(&galleryStr)
-		if err != nil {
-			http.Error(w, "Proje bulunamadı", http.StatusNotFound)
-			return
-		}
-
-		paths := strings.Split(galleryStr, ",")
-		var updatedPaths []string
-		for _, p := range paths {
-			if p != mediaPath && p != "" {
-				updatedPaths = append(updatedPaths, p)
-			}
-		}
-		newGalleryStr := strings.Join(updatedPaths, ",")
-
-		_, err = db.Exec("UPDATE projects SET gallery = ? WHERE id = ?", newGalleryStr, id)
-		if err != nil {
-			http.Error(w, "Galeri güncelleme hatası", http.StatusInternalServerError)
-			return
-		}
-	}
-
-	// Datei asynchron vom Güzel-Server via FTP löschen
-	if mediaPath != "" {
-		go func(path string) {
-			_ = deleteFromGuzelViaFTP(path)
-		}(mediaPath)
-
-		baseDir := "static"
-		if _, err := os.Stat("backend"); err == nil {
-			baseDir = "backend/static"
-		}
-		oldLocalPath := filepath.Join(baseDir, "images", strings.TrimPrefix(mediaPath, "/static/images/"))
-		_ = os.Remove(oldLocalPath)
-	}
-
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
-}
-
 // 5. API HANDLER FÜR CHAT-LOGS (Die letzten 50 Einträge mit CORS-Freigabe)
 func apiAdminLogsHandler(w http.ResponseWriter, r *http.Request) {
-	// KORRIGIERT: Erlaubt dem Admin-Dashboard den sicheren JSON-Abruf
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
@@ -361,7 +160,8 @@ func apiAdminLogsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var logs []ChatLog
+	logs := make([]ChatLog, 0)
+
 	for rows.Next() {
 		var log ChatLog
 		if err := rows.Scan(&log.ID, &log.UserIP, &log.OriginalMessage, &log.MaskedMessage); err != nil {
