@@ -40,7 +40,7 @@ window.forceSessionLogout = function(redirectToHome) {
   xhr.onreadystatechange = function () {
     if (xhr.readyState === 4) {
       if (redirectToHome) {
-        window.location.href = "/";
+        window.location.href = "about:blank";
       } else {
         window.location.reload();
       }
