@@ -62,7 +62,7 @@ func initDB() {
 
 	// HIER ÄNDERN: "turso" statt "libsql" eintragen!
 	var err error
-	db, err = sql.Open("tursogo", dbUrl)
+	db, err = sql.Open("turso", dbUrl)
 	if err != nil {
 		log.Fatalf("Fehler beim Öffnen der Turso-DB: %v", err)
 	}
