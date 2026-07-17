@@ -3,6 +3,7 @@ module nxt
 go 1.26.4
 
 require (
+	github.com/jlaffaye/ftp v0.2.1
 	github.com/joho/godotenv v1.5.1
 	github.com/tursodatabase/libsql-client-go v0.0.0-20260528064733-9d5d30a29a60
 )
