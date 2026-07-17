@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	_ "turso.tech/database/tursogo"
+	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
 
 var db *sql.DB
@@ -70,7 +70,7 @@ func initDB() {
 
 	// 2. Verbindung mit dem "turso" Treiber öffnen
 	var err error
-	db, err = sql.Open("turso", dbUrl)
+	db, err = sql.Open("libsql", dbUrl)
 	if err != nil {
 		log.Fatalf("Fehler beim Öffnen der Turso-DB: %v", err)
 	}
