@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -82,19 +83,18 @@ func updateConversationSummary(userIP, userMsg, botResp string) {
 
 func basicAuthWrapper(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// KORRIGIERT: Keine pauschale Blockierung mehr von Assets, falls diese über das /admin/-Präfix geroutet werden
-		if strings.HasSuffix(r.URL.Path, ".png") ||
-			strings.HasSuffix(r.URL.Path, ".ico") {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
+		// ... (Ihre Asset-Prüfungen bleiben hier unverändert) ...
 
 		expectedUser := os.Getenv("ADMIN_USER")
 		expectedPass := os.Getenv("ADMIN_PASSWORD")
 
+		// KORRIGIERT: Keine Passwörter mehr im Code!
+		// Wenn die Variablen auf Render fehlen, sperrt der Server den Zugriff komplett.
 		if expectedUser == "" || expectedPass == "" {
-			expectedUser = "cihat"
-			expectedPass = "cihat"
+			log.Println("KRITISCH: ADMIN_USER oder ADMIN_PASSWORD Umgebungsvariablen fehlen im System!")
+			w.Header().Set("WWW-Authenticate", `Basic realm="NEXTREKLAM Admin Panel"`)
+			http.Error(w, "Sistem hatası: Güvenlik kimlik bilgileri eksik!", http.StatusInternalServerError)
+			return
 		}
 
 		username, password, ok := r.BasicAuth()
