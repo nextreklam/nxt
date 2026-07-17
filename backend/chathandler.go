@@ -157,30 +157,3 @@ func apiChatHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(ChatResponse{Response: botReply})
 }
-
-// 5. API HANDLER FÜR CHAT-LOGS (Reduziert auf die letzten 50 Einträge)
-func apiAdminLogsHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	rows, err := db.Query("SELECT id, user_ip, original_message, masked_message FROM chat_logs ORDER BY id DESC LIMIT 50")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	var logs []ChatLog
-	for rows.Next() {
-		var log ChatLog
-		if err := rows.Scan(&log.ID, &log.UserIP, &log.OriginalMessage, &log.MaskedMessage); err != nil {
-			continue
-		}
-		logs = append(logs, log)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(logs)
-}
