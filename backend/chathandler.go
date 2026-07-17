@@ -59,12 +59,17 @@ func apiChatHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	currentTime := time.Now().Format("02.01.2006")
+
 	var userHistorySummary string
 	_ = db.QueryRow("SELECT summary FROM chat_summaries WHERE user_ip = ?", userID).Scan(&userHistorySummary)
 	if userHistorySummary != "" {
 		userHistorySummary = "\n[Kullanıcının Önceki Konuşma Özeti]: " + userHistorySummary
 	}
-	systemPrompt := "Sen NEXTREKLAM firmasının yapay zeka asistanısın. Müşterilere kibar, profesyonel ve yardımcı ol. Soruları şu kurumsal bilgilere ve yaptığımız projelere göre cevapla:\n" + firmendaten + projektKontext + userHistorySummary
+	systemPrompt := "Sen NEXTREKLAM firmasının yapay zeka asistanısın. Müşterilere kibar, profesyonel ve yardımcı ol. " +
+		"Bugünün güncel tarihi kesin olarak şudur: " + currentTime + ".\n" +
+		"Soruları şu kurumsal bilgilere ve yaptığımız projelere göre cevapla:\n" +
+		firmendaten + projektKontext + userHistorySummary
 
 	apiKey := os.Getenv("OPENROUTER_API_KEY")
 	apiURL := "https://openrouter.ai/api/v1/chat/completions"

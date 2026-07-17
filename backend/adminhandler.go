@@ -337,8 +337,18 @@ func deleteMediaHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
 }
 
-// 5. API HANDLER FÜR CHAT-LOGS (Die letzten 50 Einträge)
+// 5. API HANDLER FÜR CHAT-LOGS (Die letzten 50 Einträge mit CORS-Freigabe)
 func apiAdminLogsHandler(w http.ResponseWriter, r *http.Request) {
+	// KORRIGIERT: Erlaubt dem Admin-Dashboard den sicheren JSON-Abruf
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
