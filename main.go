@@ -54,16 +54,21 @@ func initDB() {
 	dbUrl := os.Getenv("TURSO_DATABASE_URL")
 	dbToken := os.Getenv("TURSO_AUTH_TOKEN")
 
-	// Wenn wir auf Render sind (URL vorhanden)
 	if dbUrl != "" {
-		// Der neue Treiber benötigt das Token direkt als Parameter in der URL
+		// WICHTIG: Wenn die URL mit "libsql://" beginnt, ersetzen wir es durch "https://"
+		// Das zwingt das neue SDK, eine reine Online-Netzwerkverbindung aufzubauen.
+		if strings.HasPrefix(dbUrl, "libsql://") {
+			dbUrl = strings.Replace(dbUrl, "libsql://", "https://", 1)
+		}
+		
+		// Token wie gewohnt anhängen
 		dbUrl = fmt.Sprintf("%s?authToken=%s", dbUrl, dbToken)
 	} else {
-		// Lokaler Fallback für deinen PC (ohne "file:" Präfix, nur der reine Dateiname)
+		// Lokaler Fallback für deinen PC
 		dbUrl = "nxt.db"
 	}
 
-	// 2. Verbindung mit dem neuen "turso" Treiber öffnen
+	// 2. Verbindung mit dem "turso" Treiber öffnen
 	var err error
 	db, err = sql.Open("turso", dbUrl)
 	if err != nil {
@@ -77,6 +82,7 @@ func initDB() {
 	}
 
 	fmt.Println("Erfolgreich mit Turso-Datenbank verbunden!")
+}
 
 	// 2. Tabellen für Projekte, Chat-Logs und Zusammenfassungen einzeln anlegen
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS projects (
