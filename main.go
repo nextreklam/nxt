@@ -51,26 +51,22 @@ type ChatLog struct {
 }
 
 func initDB() {
-	// 1. Umgebungsvariablen auslesen
 	dbUrl := os.Getenv("TURSO_DATABASE_URL")
 	dbToken := os.Getenv("TURSO_AUTH_TOKEN")
 
-	// Lokaler Fallback für die Entwicklung auf deinem PC
 	if dbUrl == "" {
-		dbUrl = "file:local_chat.db"
+		dbUrl = "file:nxt.db"
 	} else {
-		// Für Turso muss die URL das korrekte Format mit dem Token haben
 		dbUrl = fmt.Sprintf("%s?authToken=%s", dbUrl, dbToken)
 	}
 
-	// 2. Verbindung mit dem neuen "libsql" Treiber öffnen
+	// HIER ÄNDERN: "turso" statt "libsql" eintragen!
 	var err error
-	db, err = sql.Open("libsql", dbUrl)
+	db, err = sql.Open("turso", dbUrl)
 	if err != nil {
 		log.Fatalf("Fehler beim Öffnen der Turso-DB: %v", err)
 	}
 
-	// 3. Verbindung testen
 	err = db.Ping()
 	if err != nil {
 		log.Fatalf("Turso-Datenbank nicht erreichbar: %v", err)
@@ -111,7 +107,6 @@ func initDB() {
 	if err != nil {
 		log.Fatal("Chat_summaries tablosu oluşturma hatası:", err)
 	}
-
 }
 
 func main() {
@@ -146,7 +141,7 @@ func main() {
 		input, _ := os.ReadFile("nxt.db")
 		backupName := fmt.Sprintf("./backups/nxt_backup_%s.db", time.Now().Format("2006-01-02_15-04"))
 		_ = os.WriteFile(backupName, input, 0644)
-		// log.Println("💾 Neues sicheres Datenbank-Backup erstellt:", backupName)
+		log.Println("💾 Neues sicheres Datenbank-Backup erstellt:", backupName)
 	}
 
 	// Default-Firmendaten anlegen, falls Datei nicht existiert
@@ -176,8 +171,16 @@ func main() {
 	http.HandleFunc("/admin/prompt/get", basicAuthWrapper(getPromptHandler))
 	http.HandleFunc("/admin/prompt/save", basicAuthWrapper(savePromptHandler))
 
-	log.Println("🚀 NEXTREKLAM Server gestartet unter: http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	// Port von Render auslesen (Fallback auf 10000, falls lokal)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "10000"
+	}
+
+	fmt.Printf("Server startet auf Port %s...\n", port)
+
+	// Startet den Server (Ersetze 'nil' durch deinen Router, falls du einen nutzt)
+	log.Fatal(http.ListenAndServe("0.0.0.0:"+port, nil))
 }
 
 // 1. LANDINGPAGE HANDLER
