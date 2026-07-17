@@ -77,20 +77,6 @@ func initDB() {
 	}
 
 	fmt.Println("Erfolgreich mit Turso-Datenbank verbunden!")
-}
-
-func main() {
-	// Lädt die .env Datei beim Serverstart
-	if err := godotenv.Load(); err != nil {
-		log.Println("Hinweis: Keine .env Datei gefunden, System-Umgebungsvariablen werden genutzt.")
-	}
-
-	// 1. SQLite Datenbank öffnen
-	var err error
-	db, err = sql.Open("sqlite3", "./nxt.db")
-	if err != nil {
-		log.Fatal("Veritabanı bağlantı hatası:", err)
-	}
 
 	// 2. Tabellen für Projekte, Chat-Logs und Zusammenfassungen einzeln anlegen
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS projects (
@@ -126,6 +112,17 @@ func main() {
 		log.Fatal("Chat_summaries tablosu oluşturma hatası:", err)
 	}
 
+}
+
+func main() {
+	// Lädt die .env Datei beim Serverstart
+	if err := godotenv.Load(); err != nil {
+		log.Println("Hinweis: Keine .env Datei gefunden, System-Umgebungsvariablen werden genutzt.")
+	}
+
+	// 1. Turso-Datenbank mit Token korrekt öffnen
+	initDB()
+
 	// 3. Systemordner für Uploads und Styles garantieren
 	_ = os.MkdirAll("./static/images", os.ModePerm)
 	_ = os.MkdirAll("./static/css", os.ModePerm)
@@ -151,6 +148,7 @@ func main() {
 		_ = os.WriteFile(backupName, input, 0644)
 		// log.Println("💾 Neues sicheres Datenbank-Backup erstellt:", backupName)
 	}
+
 	// Default-Firmendaten anlegen, falls Datei nicht existiert
 	if _, err := os.Stat("firmendaten.txt"); os.IsNotExist(err) {
 		defaultData := "NEXTREKLAM kurumsal tabela imalatı ve iç mimarlık firmasıdır.\nAdres: Akıncılar, Çizmeci Sokak No.1, Güngören, İstanbul."
