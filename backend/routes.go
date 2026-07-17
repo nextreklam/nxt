@@ -2,29 +2,37 @@ package main
 
 import (
 	"net/http"
+	"os"
 )
 
 // setupRoutes registriert alle HTTP-Endpunkte für die Anwendung
 func setupRoutes() {
-	// 1. Spezifische Route für widget.js ZUERST registrieren (mit CORS-Schutz gewrapped)
-	http.HandleFunc("/static/widget.js", func(w http.ResponseWriter, r *http.Request) {
+	// KORRIGIERT: Absolute Pfadsicherheit für die widget.js im Render-Container
+	http.HandleFunc("/assets/widget.js", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/javascript")
-		w.Header().Set("Access-Control-Allow-Origin", "*") // Erlaubt Güzel das Laden der Datei
+		w.Header().Set("Access-Control-Allow-Origin", "*") // CORS voll freigeben
 		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
 
-		http.ServeFile(w, r, "./static/widget.js")
+		// KORRIGIERT: Probiert zuerst den flachen static-Ordner, falls Render im backend-Verzeichnis steht
+		if _, err := os.Stat("./static/widget.js"); err == nil {
+			http.ServeFile(w, r, "./static/widget.js")
+			return
+		}
+
+		// Fallback: Sucht im Hauptverzeichnis, falls Render eine Ebene höher startet
+		http.ServeFile(w, r, "./backend/static/widget.js")
 	})
 
-	// 2. Allgemeiner Dateiserver für alle anderen statischen Assets (Bilder, CSS)
+	// Allgemeiner Dateiserver für interne Bilder/CSS auf Render bleibt bestehen
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
-	// 3. KRITISCH: CORS-geschütztes Chat Gateway (Völlig korrekt so, stört das Widget nicht!)
-	// Das Widget lädt sich selbst über die obige Route und sendet seine Daten dann hierhin.
+	// Chat Gateway bleibt unverändert
 	http.HandleFunc("/api/chat", corsGuard(apiChatHandler))
 
 	// 4. Öffentliche API-/HTML-Routen auf Render
