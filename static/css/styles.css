@@ -1,0 +1,502 @@
+:root {
+  --ink: #13192d;          /* Dunkelblau der Visitenkarte */
+  --muted: #5b6472;
+  --line: #d8dde5;
+  --surface: #f5f7fa;
+  --panel: #ffffff;
+  --accent: #ff6a00;       /* Leuchtendes Orange der Visitenkarte */
+  --accent-strong: #ff6a00; 
+  --signal: #ff6a00;       
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--surface);
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.5;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 72px;
+  padding: 12px clamp(18px, 4vw, 64px);
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(14px);
+}
+
+.brand,
+.nav,
+.hero-actions {
+  display: flex;
+  align-items: center;
+}
+
+.brand {
+  gap: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.brand-mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: white;
+  background: var(--accent); 
+  border-radius: 6px;
+}
+
+.nav {
+  gap: clamp(12px, 3vw, 28px);
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.header-cta,
+.primary-cta,
+.secondary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border-radius: 6px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.header-cta,
+.primary-cta {
+  color: white;
+  background: var(--accent);
+}
+
+.header-cta:hover,
+.primary-cta:hover {
+  background: #e05d00; 
+}
+
+.header-cta {
+  padding: 0 18px;
+}
+
+.primary-cta {
+  padding: 0 24px;
+}
+
+.secondary-link {
+  padding: 0 16px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.secondary-link:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+/* --- HERO SECTION WITH BACKGROUND IMAGE --- */
+.hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1.02fr) minmax(320px, 0.98fr);
+  gap: clamp(30px, 5vw, 72px);
+  align-items: center;
+  min-height: calc(100vh - 72px);
+  padding: clamp(48px, 8vw, 96px) clamp(18px, 5vw, 78px);
+  
+  /* RECHTLICHER VITE-PFAD: Ohne den Punkt am Anfang, direkt mit Schrägstrich */
+  background: 
+    linear-gradient(rgba(238, 242, 246, 0.60), rgba(238, 242, 246, 0.60)), 
+    url('./../images/interior.jpg');
+
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Hintergrundbild mit Opacity - Grid-Fix integriert */
+.hero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  
+  /* WICHTIG FÜR GRID-LAYOUTS: Spannt das Bild über die gesamte Breite */
+  grid-column: 1 / -1; 
+  grid-row: 1 / -1;
+
+  /* Versuche hier zuerst dein lokales Bild */
+  background-image: url('./../images/interior.jpg');
+  
+  /* Falls dein lokales Bild wegen Vite nicht lädt, nimm diese URL zum Testen:
+     background-image: url('https://unsplash.com'); 
+  */
+
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.15; /* Macht das Bild dezent transparent */
+  z-index: 1; /* Schiebt das Bild nach ganz hinten */
+}
+
+/* Inhalt explizit vor das Hintergrundbild holen */
+.hero-copy,
+.hero-visual {
+  position: relative;
+  z-index: 2;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1, h2, h3, p {
+  overflow-wrap: anywhere;
+}
+
+h1 {
+  max-width: 760px;
+  margin: 0;
+  font-size: clamp(44px, 7vw, 86px);
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+.hero-text {
+  max-width: 660px;
+  margin: 24px 0 0;
+  color: var(--muted);
+  font-size: clamp(18px, 2vw, 22px);
+}
+
+.hero-actions {
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 34px;
+}
+
+.hero-visual {
+  display: grid;
+  place-items: center;
+}
+
+/* --- IMAGES & CONTAINERS --- */
+.image-frame {
+  position: relative;
+  width: min(100%, 720px);
+  aspect-ratio: 720 / 400;
+  overflow: hidden;
+  background: #eef2f6;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.image-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.image-frame--hero {
+  box-shadow: 0 34px 70px rgba(19, 25, 45, 0.18);
+}
+
+.image-frame--card {
+  margin-bottom: 1.5rem;
+}
+
+.image-frame--process {
+  width: 100%;
+  margin-bottom: 18px;
+  border-radius: 6px;
+}
+
+.sign-frame {
+  width: min(100%, 560px);
+  aspect-ratio: 1.14;
+  padding: clamp(22px, 4vw, 38px);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.35) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.35) 1px, transparent 1px),
+    var(--ink); 
+  background-size: 34px 34px;
+  border: 10px solid #c8ced8;
+  border-radius: 8px;
+  box-shadow: 0 34px 70px rgba(19, 25, 45, 0.25);
+}
+
+.sign-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 42%;
+  color: var(--signal); 
+  border: 2px solid rgba(255, 106, 0, 0.58);
+  border-radius: 6px;
+  font-size: clamp(54px, 8vw, 92px);
+  font-weight: 900;
+}
+
+.sign-line {
+  width: 70%;
+  height: 10px;
+  margin: 32px 0;
+  background: white;
+  border-radius: 99px;
+}
+
+.sign-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.sign-grid span {
+  height: 58px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 4px;
+}
+
+/* --- SECTIONS --- */
+.services,
+.process,
+.cta-band,
+.site-footer {
+  padding-right: clamp(18px, 5vw, 78px);
+  padding-left: clamp(18px, 5vw, 78px);
+}
+
+.services {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  padding-top: 48px;
+  padding-bottom: 22px;
+}
+
+.service-card,
+.process-grid article {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.service-card:hover,
+.process-grid article:hover {
+  border-color: rgba(255, 106, 0, 0.4);
+  box-shadow: 0 10px 25px rgba(19, 25, 45, 0.05);
+}
+
+.service-card {
+  padding: clamp(22px, 4vw, 36px);
+}
+
+.service-number,
+.process-grid span {
+  color: var(--accent-strong);
+  font-weight: 900;
+}
+
+.service-card h2,
+.section-heading h2,
+.cta-band h2,
+.site-footer h2 {
+  margin: 0;
+  font-size: clamp(26px, 3.5vw, 42px);
+  line-height: 1.05;
+}
+
+.service-card p,
+.process-grid p,
+.cta-band p,
+.site-footer p {
+  color: var(--muted);
+}
+
+.process {
+  padding-top: 70px;
+  padding-bottom: 74px;
+}
+
+.section-heading {
+  max-width: 680px;
+  margin-bottom: 28px;
+}
+
+.process-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.process-grid article {
+  min-height: 320px;
+  padding: 18px;
+}
+
+.process-grid h3 {
+  margin: 18px 0 10px;
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+/* --- CTA-BAND & FOOTER --- */
+.cta-band {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+  margin: 0 clamp(18px, 5vw, 78px) 70px;
+  padding: clamp(28px, 5vw, 48px);
+  color: white;
+  background: var(--ink); 
+  border-radius: 8px;
+}
+
+.cta-band .eyebrow,
+.cta-band p {
+  color: #dbe4ef;
+}
+
+.cta-band .primary-cta {
+  background: var(--signal);
+  color: white; 
+}
+
+.cta-band .primary-cta:hover {
+  background: #e05d00;
+}
+
+.cta-button {
+  background-color: var(--accent); /* Nutzt dein leuchtendes Orange */
+  color: #ffffff;
+  padding: 12px 24px;
+  border-radius: 6px;
+  display: inline-block;
+  transition: background-color 0.2s ease;
+}
+.cta-button:hover {
+  background-color: #e05d00; /* Etwas dunkleres Orange für den Hover-Effekt */
+}
+
+.site-footer {
+  display: grid;
+  grid-template-columns: 1.1fr 1.3fr 1fr;
+  gap: 28px;
+  padding-top: 42px;
+  padding-bottom: 28px;
+  background: var(--ink); /* Geändert von white auf Dunkelblau */
+  color: #ffffff;         /* Textfarbe auf Weiß für optimalen Kontrast */
+  border-top: 1px solid var(--line);
+}
+
+/* Sorgt dafür, dass Links im Footer lesbar sind */
+.site-footer a {
+  color: var(--line);
+  text-decoration: none;
+}
+.site-footer a:hover {
+  color: var(--accent); /* Orange beim Drüberfahren */
+}
+
+.site-footer h3 {
+  margin: 0 0 12px;
+}
+
+.copyright {
+  grid-column: 1 / -1;
+  margin: 10px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+/* --- RESPONSIVE MEDIA QUERIES --- */
+@media (max-width: 860px) {
+  .site-header {
+    flex-wrap: wrap;
+  }
+
+  .nav {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .hero,
+  .services,
+  .process-grid,
+  .cta-band,
+  .site-footer {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    min-height: auto;
+  }
+
+  .hero-visual {
+    min-height: 300px;
+  }
+
+  .cta-band {
+    margin-right: 18px;
+    margin-left: 18px;
+  }
+}
+
+@media (max-width: 520px) {
+  .header-cta {
+    width: 100%;
+  }
+
+  .primary-cta,
+  .secondary-link {
+    width: 100%;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .site-header {
+    padding: 12px 18px;
+  }
+
+  .sign-frame {
+    border-width: 7px;
+  }
+}
+
