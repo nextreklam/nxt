@@ -3,4 +3,4 @@
 *.db-journal
 *.db-wal
 backups/
-firmendaten.txt
+frontend/
