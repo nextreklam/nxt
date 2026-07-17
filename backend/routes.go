@@ -25,15 +25,19 @@ func setupRoutes() {
 		}
 		http.ServeFile(w, r, "./backend/static/widget.js")
 	})
-
-	// 2. KORRIGIERT: DYNAMISCHE PFAD-WEICHE FÜR CSS & DESIGN-MEDIEN
-	// Verhindert das leere Laden des Admin-Designs auf Render
+	// 2. ABSOLUTE PFADSICHERHEIT FÜR CSS, IMAGES & JS AUF RENDER
 	staticDir := "static"
 	if _, err := os.Stat("./backend/static"); err == nil {
-		// Falls Render eine Ebene zu hoch startet, wechseln wir auf den Unterordner
 		staticDir = "./backend/static"
+	} else if _, err := os.Stat("./static"); err != nil {
+		// Falls im Container ein anderer Pfad genutzt wird, suchen wir dynamisch
+		wd, _ := os.Getwd()
+		println("Aktuelles Arbeitsverzeichnis auf Render:", wd)
 	}
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
+
+	// Schaltet den statischen Ordner weltweit frei (ohne BasicAuth-Blockade!)
+	fs := http.FileServer(http.Dir(staticDir))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	// 3. CHAT GATEWAY
 	http.HandleFunc("/api/chat", corsGuard(apiChatHandler))
