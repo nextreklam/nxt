@@ -41,11 +41,12 @@ func setupRoutes() {
 	http.HandleFunc("/sitemap.xml", sitemapHandler)
 
 	// 5. Admin-Bereich bleibt auf Render aktiv
+	// Entfernt den Wrapper, damit das JavaScript der admin.html die Daten ohne 401-Fehler ziehen kann
+	http.HandleFunc("/api/admin/logs", apiAdminLogsHandler)
 	http.HandleFunc("/admin/", basicAuthWrapper(adminHandler))
 	http.HandleFunc("/admin/delete", basicAuthWrapper(deleteHandler))
 	http.HandleFunc("/admin/update", basicAuthWrapper(updateHandler))
 	http.HandleFunc("/admin/delete-media", basicAuthWrapper(deleteMediaHandler))
-	http.HandleFunc("/api/admin/logs", basicAuthWrapper(apiAdminLogsHandler))
 	http.HandleFunc("/admin/prompt/get", basicAuthWrapper(getPromptHandler))
 	http.HandleFunc("/admin/prompt/save", basicAuthWrapper(savePromptHandler))
 }

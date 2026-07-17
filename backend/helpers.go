@@ -99,7 +99,7 @@ func basicAuthWrapper(next http.HandlerFunc) http.HandlerFunc {
 		expectedPass := os.Getenv("ADMIN_PASSWORD")
 
 		if expectedUser == "" || expectedPass == "" {
-			expectedUser = "admin"
+			expectedUser = "cihat"
 			expectedPass = "cihat"
 		}
 
