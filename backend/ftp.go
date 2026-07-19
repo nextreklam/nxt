@@ -45,8 +45,13 @@ func uploadToGuzelViaFTP(localPath, remoteFolder, fileName string) error {
 		return fmt.Errorf("FTP-Zugangsdaten nicht konfiguriert")
 	}
 
-	// KORRIGIERT: Verbindung herstellen mit Timeout
-	client, err := ftp.Dial(ftpHost, ftp.DialWithTimeout(5*time.Second))
+	// KORRIGIERT: Verbindung herstellen mit Timeout UND Deaktivierung von EPSV.
+	// Das zwingt die Verbindung in den normalen Passiv-Modus (PASV), den DirectAdmin erwartet.
+	client, err := ftp.Dial(
+		ftpHost,
+		ftp.DialWithTimeout(5*time.Second),
+		ftp.DialWithDisabledEPSV(true),
+	)
 	if err != nil {
 		return fmt.Errorf("FTP Dial Fehler: %v", err)
 	}
@@ -59,13 +64,8 @@ func uploadToGuzelViaFTP(localPath, remoteFolder, fileName string) error {
 		return fmt.Errorf("FTP Login Fehler: %v", err)
 	}
 
-	// 🔥 NEU & ABSOLUT KRITISCH FÜR RENDER: In den Passiv-Modus wechseln!
-	// Verhindert, dass der Datenkanal beim Upload wegen Cloud-Firewalls blockiert
-	err = client.ChangeDir("/") // Startverzeichnis sicherstellen
-	if err == nil {
-		// Pasv() aktiviert den Passiv-Modus für nachfolgende Datei- und Ordneroperationen
-		_ = client.NoOp()
-	}
+	// In das Hauptverzeichnis wechseln
+	_ = client.ChangeDir("/")
 
 	// Rekursive Ordnererstellung
 	remoteBasePath := fmt.Sprintf("public_html/static/images/%s", remoteFolder)
@@ -99,7 +99,12 @@ func deleteFromGuzelViaFTP(remotePath string) error {
 		return nil
 	}
 
-	client, err := ftp.Dial(ftpHost, ftp.DialWithTimeout(5*time.Second))
+	// KORRIGIERT: Auch beim Löschen wird EPSV deaktiviert, um Firewall-Hänger zu vermeiden
+	client, err := ftp.Dial(
+		ftpHost,
+		ftp.DialWithTimeout(5*time.Second),
+		ftp.DialWithDisabledEPSV(true),
+	)
 	if err != nil {
 		return err
 	}
@@ -112,8 +117,12 @@ func deleteFromGuzelViaFTP(remotePath string) error {
 		return err
 	}
 
-	// Bereite den Pfad vor (z.B. /static/images/... zu public_html/static/images/...)
+	// KORRIGIERT & ABSICHERUNG: Bereinigt Pfade radikal von doppelten "public_html/"-Angaben,
+	// falls das JavaScript einen absoluten Pfad oder führende Slashes mitsendet.
 	cleanPath := strings.TrimPrefix(remotePath, "/")
+	cleanPath = strings.TrimPrefix(cleanPath, "public_html/")
+	cleanPath = strings.TrimPrefix(cleanPath, "/")
+
 	remoteFilePath := fmt.Sprintf("public_html/%s", cleanPath)
 
 	// Lösche die Datei auf Güzel
