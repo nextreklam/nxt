@@ -73,23 +73,25 @@ func uploadToGuzelViaFTP(localPath, remoteFolder, fileName string) error {
 		return fmt.Errorf("FTP Login Fehler: %v", err)
 	}
 
-	// 🔥 DIE KORREKTUR: Ordnerstruktur sicher von unten nach oben aufbauen und betreten
+	// 🔥 KORREKTUR: Fehlende Konstante entfernt, da die Library standardmäßig Binär nutzt.
+	// Setzt die Sitzung vor dem Ordnerbau auf das Root-Verzeichnis zurück.
+	_ = client.ChangeDir("/")
+
+	// Ordnerstruktur sicher aufbauen und betreten
 	basePath := "public_html/static/images"
 	err = mkdirAllFTP(client, basePath, remoteFolder)
 	if err != nil {
 		return fmt.Errorf("FTP-Ordnerverwaltung fehlgeschlagen: %v", err)
 	}
 
-	// Da wir durch mkdirAllFTP bereits im richtigen Zielordner stehen,
-	// öffnen wir die lokale Bilddatei auf Render
+	// Öffnen der lokalen Bilddatei auf Render
 	localFile, err := os.Open(localPath)
 	if err != nil {
 		return fmt.Errorf("Lokale Datei konnte nicht geoeffnet werden: %v", err)
 	}
 	defer localFile.Close()
 
-	// 🔥 WICHTIG: Da wir uns bereits im Zielordner befinden,
-	// laden wir das Bild direkt mit dem reinen Dateinamen hoch!
+	// Lädt das Bild direkt mit dem reinen Dateinamen hoch
 	err = client.Stor(fileName, localFile)
 	if err != nil {
 		return fmt.Errorf("FTP Upload Fehler beim Speichern der Datei: %v", err)
@@ -126,13 +128,14 @@ func deleteFromGuzelViaFTP(remotePath string) error {
 		return err
 	}
 
+	_ = client.ChangeDir("/")
+
 	// 1. Pfad radikal von Präfixen befreien (z.B. "static/images/ordner/datei.jpg")
 	cleanPath := strings.TrimPrefix(remotePath, "/")
 	cleanPath = strings.TrimPrefix(cleanPath, "public_html/")
 	cleanPath = strings.TrimPrefix(cleanPath, "/")
 
 	// 2. Datei-Name und Verzeichnis-Pfad trennen
-	// Beispiel: remoteFilePath wird zu "public_html/static/images/ordner/datei.jpg"
 	remoteFilePath := fmt.Sprintf("public_html/%s", cleanPath)
 
 	// Suchen, wo der Dateiname beginnt (letzter Schrägstrich)
@@ -140,9 +143,9 @@ func deleteFromGuzelViaFTP(remotePath string) error {
 
 	if lastSlash != -1 {
 		dirPath := remoteFilePath[:lastSlash]    // Alles bis zum Ordner
-		fileName := remoteFilePath[lastSlash+1:] // Nur der reine Dateiname (z.B. "main.jpg")
+		fileName := remoteFilePath[lastSlash+1:] // Nur der reine Dateiname
 
-		// 🔥 DIE RETTUNG: Erst aktiv in den Ordner wechseln
+		// Erst aktiv in den Ordner wechseln
 		err = client.ChangeDir(dirPath)
 		if err == nil {
 			// Wenn der Wechsel klappt, direkt im Ordner löschen
@@ -151,7 +154,7 @@ func deleteFromGuzelViaFTP(remotePath string) error {
 		}
 	}
 
-	// Fallback: Falls die Pfadtrennung scheitert, alten Löschversuch als Backup nutzen
+	// Fallback
 	_ = client.Delete(remoteFilePath)
 	return nil
 }
