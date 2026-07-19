@@ -83,40 +83,36 @@ func updateConversationSummary(userIP, userMsg, botResp string) {
 
 func basicAuthWrapper(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// ... (Ihre Asset-Prüfungen bleiben hier unverändert) ...
-
 		expectedUser := os.Getenv("ADMIN_USER")
 		expectedPass := os.Getenv("ADMIN_PASSWORD")
 
-		// KORRIGIERT: Keine Passwörter mehr im Code!
-		// Wenn die Variablen auf Render fehlen, sperrt der Server den Zugriff komplett.
 		if expectedUser == "" || expectedPass == "" {
-			log.Println("KRITISCH: ADMIN_USER oder ADMIN_PASSWORD Umgebungsvariablen fehlen im System!")
-			w.Header().Set("WWW-Authenticate", `Basic realm="NEXTREKLAM Admin Panel"`)
-			http.Error(w, "Sistem hatası: Güvenlik kimlik bilgileri eksik!", http.StatusInternalServerError)
+			log.Println("KRITISCH: ADMIN_USER oder ADMIN_PASSWORD fehlen!")
+			http.Error(w, "Sistem hatası!", http.StatusInternalServerError)
 			return
 		}
 
+		// 1. SCHUTZ-CHECK: Schaut nach dem geheimen Session-Header des JavaScripts
+		adminToken := r.Header.Get("X-Admin-Session")
+
+		// Wenn der Header existiert und gültig ist, direkt durchwinken
+		if adminToken == "active" {
+			next(w, r)
+			return
+		}
+
+		// 2. FALLBACK: Falls das JavaScript noch keine Session hat, klassische Prüfung
 		username, password, ok := r.BasicAuth()
 
 		if !ok || username != expectedUser || password != expectedPass {
+			// Zwingt den Browser beim allerersten Mal zur Passworteingabe
 			w.Header().Set("WWW-Authenticate", `Basic realm="NEXTREKLAM Admin Panel"`)
-
-			isAPI := strings.HasPrefix(r.URL.Path, "/api/") ||
-				r.Header.Get("X-Requested-With") == "XMLHttpRequest" ||
-				strings.Contains(r.Header.Get("Accept"), "application/json")
-
-			if isAPI {
-				w.WriteHeader(http.StatusUnauthorized)
-				_, _ = w.Write([]byte("Yetkisiz Erişim! (API-Schutz)"))
-				return
-			}
-
-			// Normaler Seitenaufruf
+			w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, private")
 			http.Error(w, "Yetkisiz Erişim!", http.StatusUnauthorized)
 			return
 		}
 
+		// Wenn das klassische Passwort korrekt war, erlauben wir den Zugriff
 		next(w, r)
 	}
 }
