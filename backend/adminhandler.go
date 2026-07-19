@@ -17,7 +17,7 @@ import (
 // 3. ADMIN DASHBOARD HANDLER (Uploads & Verwaltung mit FTP-Sync zu Güzel)
 func adminHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
-		if err := r.ParseMultipartForm(100 << 20); err != nil { // 100MB Max für Videos
+		if err := r.ParseMultipartForm(100 << 20); err != nil { // 100MB Max
 			http.Error(w, "Dosya boyutu çok büyük!", http.StatusBadRequest)
 			return
 		}
@@ -27,13 +27,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		date := r.FormValue("date")
 		desc := r.FormValue("desc")
 
-		baseDir := "static"
-		if _, err := os.Stat("backend"); err == nil {
-			baseDir = "backend/static"
-		}
-		projectFolder := filepath.Join(baseDir, "images", folder)
-		_ = os.MkdirAll(projectFolder, os.ModePerm)
-
+		// --- 1. HAUPTBILD VERARBEITEN ---
 		var mainImgPath string
 		file, header, err := r.FormFile("mainImage")
 		if err == nil {
@@ -41,56 +35,70 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 
 			ext := filepath.Ext(header.Filename)
 			fileName := fmt.Sprintf("%s_main_%d%s", folder, time.Now().UnixNano()%1000, ext)
-			targetPath := filepath.Join(projectFolder, fileName)
 
-			out, err := os.Create(targetPath)
+			// 🔥 DIE RETTUNG: Nutzen des sicheren Temp-Verzeichnisses von Render
+			tempFile, err := os.CreateTemp("", "upload-main-*.tmp")
 			if err == nil {
-				defer out.Close()
-				_, _ = io.Copy(out, file)
-				mainImgPath = "static/images/" + folder + "/" + fileName
+				defer func() {
+					tempFile.Close()
+					_ = os.Remove(tempFile.Name()) // Löscht die Datei nach dem Upload vom Render-Speicher
+				}()
 
-				errUpload := uploadToGuzelViaFTP(targetPath, folder, fileName)
+				_, _ = io.Copy(tempFile, file)
+				_ = tempFile.Sync() // Erzwingt das Schreiben der Bytes
+
+				// Synchroner FTP-Upload direkt aus dem Temp-Ordner
+				errUpload := uploadToGuzelViaFTP(tempFile.Name(), folder, fileName)
 				if errUpload != nil {
 					log.Println("Kritischer FTP-Fehler für Hauptbild:", errUpload)
 				} else {
 					log.Println("Erfolg: Hauptbild via FTP auf Güzel gespeichert!")
+					// Nur wenn der Upload klappt, setzen wir den Web-Pfad für die DB
+					mainImgPath = "static/images/" + folder + "/" + fileName
 				}
-
+			} else {
+				log.Println("Fehler beim Erstellen der Temp-Datei auf Render:", err)
 			}
 		}
 
+		// --- 2. GALERIE-MEDIEN VERARBEITEN ---
 		var galleryPaths []string
 		files := r.MultipartForm.File["galleryMedia"]
 		for i, fHeader := range files {
-			// KORRIGIERT: Typ von *filepath.Header auf *multipart.FileHeader geändert
 			func(index int, fh *multipart.FileHeader) {
 				f, err := fh.Open()
 				if err != nil {
 					return
 				}
-				defer f.Close() // Schließt das Handle sofort nach diesem Durchlauf!
+				defer f.Close()
 
 				ext := filepath.Ext(fh.Filename)
 				fileNameClean := fmt.Sprintf("%s_gal_%d_%d%s", folder, index, time.Now().UnixNano()%1000, ext)
-				targetPath := filepath.Join(projectFolder, fileNameClean)
 
-				out, err := os.Create(targetPath)
+				// 🔥 Auch hier den sicheren Temp-Ordner nutzen
+				tempGalFile, err := os.CreateTemp("", "upload-gal-*.tmp")
 				if err == nil {
-					defer out.Close()
-					_, _ = io.Copy(out, f)
-					galleryPaths = append(galleryPaths, "static/images/"+folder+"/"+fileNameClean)
+					defer func() {
+						tempGalFile.Close()
+						_ = os.Remove(tempGalFile.Name())
+					}()
 
-					errUpload := uploadToGuzelViaFTP(targetPath, folder, fileNameClean)
+					_, _ = io.Copy(tempGalFile, f)
+					_ = tempGalFile.Sync()
+
+					errUpload := uploadToGuzelViaFTP(tempGalFile.Name(), folder, fileNameClean)
 					if errUpload != nil {
 						log.Println("Kritischer FTP-Fehler für Galeriebild:", errUpload)
 					} else {
 						log.Println("Erfolg: Galeriebild via FTP auf Güzel gespeichert!")
+						galleryPaths = append(galleryPaths, "static/images/"+folder+"/"+fileNameClean)
 					}
 				}
 			}(i, fHeader)
 		}
 		gallerySerialized := strings.Join(galleryPaths, ",")
 
+		// --- 3. IN DIE DATENBANK SCHREIBEN ---
 		_, err = db.Exec("INSERT INTO projects (folder, title, date, desc, main_img, gallery) VALUES (?, ?, ?, ?, ?, ?)",
 			folder, title, date, desc, mainImgPath, gallerySerialized)
 		if err != nil {
@@ -102,6 +110,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// GET-Logik für die Anzeige der Tabelle bleibt komplett unverändert...
 	rows, err := db.Query("SELECT id, folder, title, date, desc, main_img, gallery FROM projects ORDER BY id DESC")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
