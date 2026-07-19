@@ -1,56 +1,80 @@
-// --- AUTOMATISCHES TIMEOUT & SESSION-SCHUTZ LOGIK ---
-const TIMEOUT_LIMIT = 10 * 60 * 1000; // 10 Minuten
+// =========================================================================
+// 🔥 REPARIERTE AUTOMATISCHE TIMEOUT & SESSION-SCHUTZ LOGIK
+// =========================================================================
+const TIMEOUT_LIMIT = 10 * 60 * 1000; // 10 Minuten Inaktivität
 let inactivityTimer;
 
-// KORRIGIERT: Loop-Schutz beim ersten Session-Check
-if (!sessionStorage.getItem('admin_session_active')) {
-  sessionStorage.setItem('admin_session_active', 'true');
-  localStorage.setItem('admin_last_activity', Date.now());
-}
-
-function resetInactivityTimer() {
-  localStorage.setItem('admin_last_activity', Date.now());
+// Prüft, ob das Timeout abgelaufen ist oder ob manipuliert wurde
+function checkPastTimeout() {
+  const sessionActive = sessionStorage.getItem('admin_session_active');
+  const lastActivity = localStorage.getItem('admin_last_activity');
   
-  clearTimeout(inactivityTimer);
-  inactivityTimer = setTimeout(() => {
+  // Wenn der Tab neu geöffnet wurde oder keine Aktivität registriert ist
+  if (!sessionActive || !lastActivity) {
+    return; // Backend-Validierung über loadChatLogs() abwarten
+  }
+
+  const timePassed = Date.now() - parseInt(lastActivity);
+  if (timePassed > TIMEOUT_LIMIT) {
     alert("10 dakika boyunca işlem yapılmadığı için oturumunuz güvenlik nedeniyle kapatılmıştır.");
     window.forceSessionLogout(true);
-  }, TIMEOUT_LIMIT);
-}
-
-function checkPastTimeout() {
-  const lastActivity = localStorage.getItem('admin_last_activity');
-  if (lastActivity) {
-    const timePassed = Date.now() - parseInt(lastActivity);
-    if (timePassed > TIMEOUT_LIMIT) {
-      window.forceSessionLogout(true);
-    }
   }
 }
 
-// KORRIGIERT: Explizit an window gebunden, damit Inline-HTML-Events (onclick) darauf zugreifen können
+// Setzt den Timer bei Benutzerinteraktionen zurück
+function resetInactivityTimer() {
+  // Aktualisiert den Timer nur, wenn die Session vom Server validiert wurde
+  if (sessionStorage.getItem('admin_session_active') === 'true') {
+    localStorage.setItem('admin_last_activity', Date.now());
+    
+    clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+      alert("10 dakika boyunca işlem yapılmadığı için oturumunuz güvenlik nedeniyle kapatılmıştır.");
+      window.forceSessionLogout(true);
+    }, TIMEOUT_LIMIT);
+  }
+}
+
+// Meldet den Nutzer ab, löscht die Browser-Credentials und leitet ggf. um
 window.forceSessionLogout = function(redirectToHome) {
   localStorage.removeItem('admin_last_activity');
   sessionStorage.removeItem('admin_session_active');
 
+  // Trick, um den HTTP-Basic-Auth-Cache im Browser zu verwerfen
   const xhr = new XMLHttpRequest();
-  xhr.open("GET", "/api/admin/logs", true, "invalid_user_logout", "clear_auth_cache_123");
+  xhr.open("GET", "/api/admin/logs", true, "logout_user_" + Date.now(), "wrong_password_clear_cache");
   xhr.send();
   
   xhr.onreadystatechange = function () {
     if (xhr.readyState === 4) {
       if (redirectToHome) {
-        window.location.href = "about:blank";
+        window.location.href = "/"; // Leitet unbefugte Nutzer auf die Startseite
       } else {
-        window.location.reload();
+        window.location.reload(); // Lädt neu, um das Browser-Anmeldefenster zu erzwingen
       }
     }
   };
 };
 
+// Wird aufgerufen, sobald das Backend grünes Licht gibt
+function setSessionAsValidated() {
+  sessionStorage.setItem('admin_session_active', 'true');
+  localStorage.setItem('admin_last_activity', Date.now());
+}
+
+// =========================================================================
+// 🚀 DYNAMISCHES LADEN DER CHAT-LOGS & SESSION-VALIDIERUNG
+// =========================================================================
 async function loadChatLogs() {
   try {
     const response = await fetch('/api/admin/logs');
+    
+    // REPARIERT: Wenn das Backend 401 liefert, wird der Zugriff sofort verweigert
+    if (response.status === 401) {
+      window.forceSessionLogout(true);
+      return;
+    }
+
     if (!response.ok) {
       console.error('API-Fehler:', response.status);
       const tbody = document.getElementById('logTableBody');
@@ -58,12 +82,16 @@ async function loadChatLogs() {
       return;
     }
     
+    // Daten erfolgreich geladen -> Login war korrekt, Session starten!
+    setSessionAsValidated();
+    resetInactivityTimer();
+
     const logs = await response.json();
     const tbody = document.getElementById('logTableBody');
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    // Absicherung: Falls logs null, kein Array oder leer ist
+    // Absicherung: Falls Logs null, kein Array oder leer sind
     if (!logs || !Array.isArray(logs) || logs.length === 0) {
       tbody.innerHTML = '<tr><td colspan="4" class="empty-list">Henüz kaydedilmiş bir chat logu bulunmuyor.</td></tr>';
       return;
@@ -103,11 +131,14 @@ async function loadChatLogs() {
   }
 }
 
+// =========================================================================
+// INITIALISIERUNG BEIM SEITENSTART
+// =========================================================================
 document.addEventListener("DOMContentLoaded", () => {
   checkPastTimeout();
-  resetInactivityTimer();
-  loadChatLogs();
+  loadChatLogs(); // Lädt Daten und validiert zeitgleich die Session
   
+  // Event-Listener zur Überwachung von Inaktivität
   document.addEventListener("mousemove", resetInactivityTimer);
   document.addEventListener("keypress", resetInactivityTimer);
   document.addEventListener("click", resetInactivityTimer);
