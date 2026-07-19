@@ -25,7 +25,8 @@ function editProject(id, folder, title, date, desc, buttonElement) {
     
     // KORRIGIERT: Holt das Vorschau-Bild explizit von nextreklam.com.tr statt von Render
     if (!mainImgPath.startsWith('/')) mainImgPath = '/' + mainImgPath;
-    const absoluteMainImgPath = "https://nextreklam.com.tr" + mainImgPath;
+    let previewMainPath = mainImgPath.replace('/public_html', '').replace('public_html', '');
+    const absoluteMainImgPath = "https://nextreklam.com.tr" + previewMainPath;
 
     const box = document.createElement('div');
     box.className = 'preview-box';
@@ -72,8 +73,9 @@ function editProject(id, folder, title, date, desc, buttonElement) {
       
       let currentPath = path;
       if (!currentPath.startsWith('/')) currentPath = '/' + currentPath;
+      let previewGalleryPath = currentPath.replace('/public_html', '').replace('public_html', '');
       // KORRIGIERT: Holt auch die Galerie-Vorschauen von nextreklam.com.tr
-      const absoluteGalleryPath = "https://nextreklam.com.tr" + currentPath;
+      const absoluteGalleryPath = "https://nextreklam.com.tr" + previewGalleryPath;
 
       const box = document.createElement('div');
       box.className = 'preview-box';
