@@ -225,7 +225,37 @@
       ]
     }
     </script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        const domain = "https://nextreklam.com.tr";
 
+        // 1. Alle Vorschaubilder korrigieren
+        document.querySelectorAll('.project-image-wrapper img').forEach(img => {
+          const src = img.getAttribute('src');
+          if (src && !src.startsWith('http')) {
+            img.src = domain + (src.startsWith('/') ? '' : '/') + src;
+          }
+        });
+
+        // 2. Alle Detailbilder in den Modals korrigieren
+        document.querySelectorAll('.media-item img').forEach(img => {
+          const src = img.getAttribute('src');
+          if (src && !src.startsWith('http')) {
+            img.src = domain + (src.startsWith('/') ? '' : '/') + src;
+          }
+        });
+
+        // 3. Alle Videos in den Modals korrigieren
+        document.querySelectorAll('.media-item video source').forEach(source => {
+          const src = source.getAttribute('src');
+          if (src && !src.startsWith('http')) {
+            source.src = domain + (src.startsWith('/') ? '' : '/') + src;
+            // Video neu laden, damit der neue Pfad aktiv wird
+            source.parentElement.load();
+          }
+        });
+      });
+    </script>
 
   </body>
 </html>    
