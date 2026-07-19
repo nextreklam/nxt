@@ -94,7 +94,7 @@
           {{range .}}
           <article class="project-card" onclick="openProject('modal-{{.ID}}')">
             <div class="project-image-wrapper">
-              <img src="{{.MainImg}}" alt="{{.Title}}">
+              <img src="https://nextreklam.com.tr{{.MainImg}}" alt="{{.Title}}">
             </div>
             <div class="project-info">
               <div class="project-meta">{{.Date}}</div>
@@ -125,10 +125,10 @@
                 <!-- Nutzt eine einfache Überprüfung der Dateiendung für Videos im Pfad -->
                 {{if jsonHasVideoExtension .}}
                 <video controls preload="metadata" style="width: 100%; height: 100%; object-fit: cover;">
-                  <source src="{{.}}" type="video/mp4">
+                  <source src="https://nextreklam.com.tr{{.}}" type="video/mp4">
                 </video>
                 {{else}}
-                <img src="{{.}}" alt="Proje Detay Görseli" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;" onclick="zoomImage(this.src, event)">                {{end}}
+                <img src="https://nextreklam.com.tr{{.}}" alt="Proje Detay Görseli" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;" onclick="zoomImage(this.src, event)">                {{end}}
               </div>
             {{end}}
           </div>
