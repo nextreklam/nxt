@@ -40,22 +40,10 @@ window.forceSessionLogout = function(redirectToHome) {
   // 1. Sitzungsdaten restlos aus dem Speicher des Browsers löschen
   localStorage.removeItem('admin_last_activity');
   sessionStorage.removeItem('admin_session_active');
+  const currentUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+  window.location.href = currentUrl + "?logout=" + Date.now();
+};
 
-  // 2. Browser-Cache für die HTTP-Anmeldung sprengen
-  const xhr = new XMLHttpRequest();
-  // Wir hängen einen dynamischen Zeitstempel an, um jeglichen Server-Cache zu umgehen
-  xhr.open("GET", window.location.protocol + "//logout:logout@" + window.location.host + "/api/admin/logs?t=" + Date.now(), true);
-  
-  // Wenn die Anfrage abgeschlossen ist, laden wir die Seite neu
-  xhr.onreadystatechange = function () {
-    if (xhr.readyState === 4) {
-      // 3. WICHTIGE VERZÖGERUNG: Wir geben dem Browser 100ms Zeit, die ungültigen
-      // Anmeldedaten im Cache zu verarbeiten, bevor der Reload ausgeführt wird.
-      setTimeout(() => {
-        window.location.reload();
-      }, 100);
-    }
-  };
   
   xhr.send();
 };
