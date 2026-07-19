@@ -35,13 +35,22 @@ function resetInactivityTimer() {
   }
 }
 
-// Meldet den Nutzer ab, löscht die Browser-Credentials und leitet ggf. um
+// 🔥 REPARIERT: Löscht die Session komplett und erzwingt das Login-Fenster ohne Redirects!
 window.forceSessionLogout = function(redirectToHome) {
-  // 1. Sitzungsdaten restlos aus dem Speicher des Browsers löschen
   localStorage.removeItem('admin_last_activity');
   sessionStorage.removeItem('admin_session_active');
-  const currentUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-  window.location.href = currentUrl + "?logout=" + Date.now();
+
+  // Überschreibt den Browser-Cache mit einem ungültigen AJAX-Aufruf
+  const xhr = new XMLHttpRequest();
+  xhr.open("GET", window.location.protocol + "//logout:logout@" + window.location.host + "/api/admin/logs?clear=" + Date.now(), true);
+  xhr.send();
+  
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState === 4) {
+      // Keine Weiterleitung: Wir bleiben auf der Admin-Seite und erzwingen die Maske
+      window.location.href = window.location.pathname + "?auth_clear=" + Date.now();
+    }
+  };
 };
 
 // Wird aufgerufen, sobald das Backend grünes Licht gibt
@@ -55,10 +64,17 @@ function setSessionAsValidated() {
 // =========================================================================
 async function loadChatLogs() {
   try {
-    const response = await fetch('/api/admin/logs');
-    
+    // Wir fügen den X-Admin-Session Header hinzu, damit das Go-Backend uns autorisiert
+    const response = await fetch('/api/admin/logs', {
+      headers: {
+        'X-Admin-Session': sessionStorage.getItem('admin_session_active') === 'true' ? 'active' : 'guest',
+        'Cache-Control': 'no-cache'
+      }
+    });    
     // REPARIERT: Wenn das Backend 401 liefert, wird der Zugriff sofort verweigert
     if (response.status === 401) {
+      localStorage.removeItem('admin_last_activity');
+      sessionStorage.removeItem('admin_session_active');
       window.forceSessionLogout(true);
       return;
     }
