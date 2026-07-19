@@ -46,6 +46,7 @@ func setupRoutes() {
 	http.HandleFunc("/", homeHandler)
 	http.HandleFunc("/galeri", galleryHandler)
 	http.HandleFunc("/sitemap.xml", sitemapHandler)
+	http.HandleFunc("/api/projects", apiProjectsHandler)
 
 	// 5. ADMIN-BEREICH (Geschützt via BasicAuth)
 	http.HandleFunc("/api/admin/logs", apiAdminLogsHandler)

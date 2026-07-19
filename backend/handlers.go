@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -83,4 +84,36 @@ func galleryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	tmpl.Execute(w, projects)
+}
+
+func apiProjectsHandler(w http.ResponseWriter, r *http.Request) {
+	// Erlaubt Ihrem PHP-Server den Zugriff
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	rows, err := db.Query("SELECT id, folder, title, date, desc, main_img, gallery FROM projects ORDER BY id DESC")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var projects []Project
+	for rows.Next() {
+		var p Project
+		err := rows.Scan(&p.ID, &p.Folder, &p.Title, &p.Date, &p.Desc, &p.MainImg, &p.GalleryStr)
+		if err != nil {
+			log.Println("API Veri Tarama Hatası:", err.Error())
+			continue
+		}
+		if p.GalleryStr != "" {
+			p.GalleryArr = strings.Split(p.GalleryStr, ",")
+		} else {
+			p.GalleryArr = []string{}
+		}
+		projects = append(projects, p)
+	}
+
+	json.NewEncoder(w).Encode(projects)
 }
