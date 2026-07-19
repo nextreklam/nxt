@@ -11,7 +11,7 @@ function editProject(id, folder, title, date, desc, buttonElement) {
   document.getElementById('formGalleryMedia').required = false;
 
   // KORRIGIERT: Absolute URL zu Render für das Formular-Ziel
-  document.getElementById('mainProjectForm').action = "https://onrender.com";
+  document.getElementById('mainProjectForm').action = "https://nxt-4llp.onrender.com/admin/update";
   document.getElementById('formSubmitBtn').textContent = "Değişiklikleri Kaydet";
   document.getElementById('formCancelBtn').style.display = "block";
 
@@ -42,7 +42,7 @@ function editProject(id, folder, title, date, desc, buttonElement) {
         formData.append("path", mainImgPath); // Sendet den reinen Pfad an Go
         formData.append("type", "main");
         
-        const res = await fetch("https://onrender.com", { method: "POST", body: formData });
+        const res = await fetch("https://nxt-4llp.onrender.com/admin/delete-media", { method: "POST", body: formData });
         if(res.ok) {
           box.remove();
           mainPreview.style.display = "none";
@@ -96,7 +96,7 @@ function editProject(id, folder, title, date, desc, buttonElement) {
           formData.append("path", path);
           formData.append("type", "gallery");
           
-          const res = await fetch("https://onrender.com", { method: "POST", body: formData });
+          const res = await fetch("https://nxt-4llp.onrender.com/admin/delete-media", { method: "POST", body: formData });
           if(res.ok) {
             box.remove();
             const currentGallery = buttonElement.getAttribute('data-gallery') || "";
@@ -127,7 +127,7 @@ function resetFormMode() {
   document.getElementById('formMainImage').required = true;
   document.getElementById('formGalleryMedia').required = true;
 
-  document.getElementById('mainProjectForm').action = "https://onrender.com";
+  document.getElementById('mainProjectForm').action = "https://nxt-4llp.onrender.com/admin/";
   document.getElementById('formSubmitBtn').textContent = "Projeyi Kaydet ve Yayınla";
   document.getElementById('formCancelBtn').style.display = "none";
   
@@ -140,7 +140,7 @@ function resetFormMode() {
 // --- PROMPT EDITOR MODAL LOGIK ---
 async function openPromptEditor() {
   try {
-    const response = await fetch('https://onrender.com/prompt/get');
+    const response = await fetch('https://nxt-4llp.onrender.com/admin/prompt/get');
     if (response.ok) {
       const data = await response.json();
       document.getElementById('promptTextarea').value = data.content;
@@ -163,7 +163,7 @@ async function savePromptEditor() {
   const textContent = textarea.value;
 
   try {
-    const response = await fetch('https://onrender.com/prompt/save', {
+    const response = await fetch('https://nxt-4llp.onrender.com/admin/prompt/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: textContent })

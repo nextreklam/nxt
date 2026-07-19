@@ -99,11 +99,11 @@ func deleteFromGuzelViaFTP(remotePath string) error {
 		return nil
 	}
 
-	// KORRIGIERT: Auch beim Löschen wird EPSV deaktiviert, um Firewall-Hänger zu vermeiden
+	// KORRIGIERT: Erhöhtes Verbindungs-Timeout (15 Sekunden) für langsame Firewalls
 	client, err := ftp.Dial(
 		ftpHost,
-		ftp.DialWithTimeout(5*time.Second),
-		ftp.DialWithDisabledEPSV(true),
+		ftp.DialWithTimeout(15*time.Second),
+		ftp.DialWithDisabledEPSV(true), // Verhindert Einfrieren des Datenkanals
 	)
 	if err != nil {
 		return err
@@ -117,15 +117,14 @@ func deleteFromGuzelViaFTP(remotePath string) error {
 		return err
 	}
 
-	// KORRIGIERT & ABSICHERUNG: Bereinigt Pfade radikal von doppelten "public_html/"-Angaben,
-	// falls das JavaScript einen absoluten Pfad oder führende Slashes mitsendet.
+	// Pfad sauber bereinigen
 	cleanPath := strings.TrimPrefix(remotePath, "/")
 	cleanPath = strings.TrimPrefix(cleanPath, "public_html/")
 	cleanPath = strings.TrimPrefix(cleanPath, "/")
 
 	remoteFilePath := fmt.Sprintf("public_html/%s", cleanPath)
 
-	// Lösche die Datei auf Güzel
+	// Lösche die Datei auf Güzel (Fehler werden für flüssigen Ablauf ignoriert)
 	_ = client.Delete(remoteFilePath)
 	return nil
 }
