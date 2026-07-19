@@ -44,11 +44,6 @@ window.forceSessionLogout = function(redirectToHome) {
   window.location.href = currentUrl + "?logout=" + Date.now();
 };
 
-  
-  xhr.send();
-};
-
-
 // Wird aufgerufen, sobald das Backend grünes Licht gibt
 function setSessionAsValidated() {
   sessionStorage.setItem('admin_session_active', 'true');

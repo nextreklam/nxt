@@ -49,7 +49,7 @@ func setupRoutes() {
 	http.HandleFunc("/api/projects", apiProjectsHandler)
 
 	// 5. ADMIN-BEREICH (Geschützt via BasicAuth)
-	http.HandleFunc("/api/admin/logs", apiAdminLogsHandler)
+	http.HandleFunc("/api/admin/logs", basicAuthWrapper(apiAdminLogsHandler))
 	http.HandleFunc("/admin/", basicAuthWrapper(adminHandler))
 	http.HandleFunc("/admin/delete", basicAuthWrapper(deleteHandler))
 	http.HandleFunc("/admin/update", basicAuthWrapper(updateHandler))
