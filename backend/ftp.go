@@ -99,11 +99,11 @@ func deleteFromGuzelViaFTP(remotePath string) error {
 		return nil
 	}
 
-	// KORRIGIERT: Erhöhtes Verbindungs-Timeout (15 Sekunden) für langsame Firewalls
+	// Verbindung herstellen mit sicherem Timeout und PASV-Erzwingung
 	client, err := ftp.Dial(
 		ftpHost,
 		ftp.DialWithTimeout(15*time.Second),
-		ftp.DialWithDisabledEPSV(true), // Verhindert Einfrieren des Datenkanals
+		ftp.DialWithDisabledEPSV(true),
 	)
 	if err != nil {
 		return err
@@ -117,14 +117,32 @@ func deleteFromGuzelViaFTP(remotePath string) error {
 		return err
 	}
 
-	// Pfad sauber bereinigen
+	// 1. Pfad radikal von Präfixen befreien (z.B. "static/images/ordner/datei.jpg")
 	cleanPath := strings.TrimPrefix(remotePath, "/")
 	cleanPath = strings.TrimPrefix(cleanPath, "public_html/")
 	cleanPath = strings.TrimPrefix(cleanPath, "/")
 
+	// 2. Datei-Name und Verzeichnis-Pfad trennen
+	// Beispiel: remoteFilePath wird zu "public_html/static/images/ordner/datei.jpg"
 	remoteFilePath := fmt.Sprintf("public_html/%s", cleanPath)
 
-	// Lösche die Datei auf Güzel (Fehler werden für flüssigen Ablauf ignoriert)
+	// Suchen, wo der Dateiname beginnt (letzter Schrägstrich)
+	lastSlash := strings.LastIndex(remoteFilePath, "/")
+
+	if lastSlash != -1 {
+		dirPath := remoteFilePath[:lastSlash]    // Alles bis zum Ordner
+		fileName := remoteFilePath[lastSlash+1:] // Nur der reine Dateiname (z.B. "main.jpg")
+
+		// 🔥 DIE RETTUNG: Erst aktiv in den Ordner wechseln
+		err = client.ChangeDir(dirPath)
+		if err == nil {
+			// Wenn der Wechsel klappt, direkt im Ordner löschen
+			_ = client.Delete(fileName)
+			return nil
+		}
+	}
+
+	// Fallback: Falls die Pfadtrennung scheitert, alten Löschversuch als Backup nutzen
 	_ = client.Delete(remoteFilePath)
 	return nil
 }
