@@ -10,21 +10,26 @@ function editProject(id, folder, title, date, desc, buttonElement) {
   document.getElementById('formMainImage').required = false;
   document.getElementById('formGalleryMedia').required = false;
 
-  document.getElementById('mainProjectForm').action = "/admin/update";
+  // KORRIGIERT: Absolute URL zu Render für das Formular-Ziel
+  document.getElementById('mainProjectForm').action = "https://onrender.com";
   document.getElementById('formSubmitBtn').textContent = "Değişiklikleri Kaydet";
   document.getElementById('formCancelBtn').style.display = "block";
 
   // --- 1. HAUPTBILD VORSCHAU ---
   const mainPreview = document.getElementById('editMainPreview');
   mainPreview.innerHTML = '';
-  const mainImgPath = buttonElement.getAttribute('data-main') || "";
+  let mainImgPath = buttonElement.getAttribute('data-main') || "";
 
   if (mainImgPath.trim() !== "" && mainImgPath !== "null") {
     mainPreview.style.display = "flex";
     
+    // KORRIGIERT: Holt das Vorschau-Bild explizit von nextreklam.com.tr statt von Render
+    if (!mainImgPath.startsWith('/')) mainImgPath = '/' + mainImgPath;
+    const absoluteMainImgPath = "https://nextreklam.com.tr" + mainImgPath;
+
     const box = document.createElement('div');
     box.className = 'preview-box';
-    box.innerHTML = `<img src="${mainImgPath}" alt="Ana Görsel" style="width:100%; height:100%; object-fit:cover; display:block;">`;
+    box.innerHTML = `<img src="${absoluteMainImgPath}" alt="Ana Görsel" style="width:100%; height:100%; object-fit:cover; display:block;">`;
 
     const delBtn = document.createElement('button');
     delBtn.type = 'button';
@@ -34,10 +39,10 @@ function editProject(id, folder, title, date, desc, buttonElement) {
       if(confirm("Ana görseli silmek istiyor musunuz? (Kartın düzgün görünmesi için yeni bir görsel yüklemeniz gerekecektir.)")) {
         const formData = new FormData();
         formData.append("id", id);
-        formData.append("path", mainImgPath);
+        formData.append("path", mainImgPath); // Sendet den reinen Pfad an Go
         formData.append("type", "main");
         
-        const res = await fetch("/admin/delete-media", { method: "POST", body: formData });
+        const res = await fetch("https://onrender.com", { method: "POST", body: formData });
         if(res.ok) {
           box.remove();
           mainPreview.style.display = "none";
@@ -65,14 +70,19 @@ function editProject(id, folder, title, date, desc, buttonElement) {
     paths.forEach(path => {
       if(!path) return;
       
+      let currentPath = path;
+      if (!currentPath.startsWith('/')) currentPath = '/' + currentPath;
+      // KORRIGIERT: Holt auch die Galerie-Vorschauen von nextreklam.com.tr
+      const absoluteGalleryPath = "https://nextreklam.com.tr" + currentPath;
+
       const box = document.createElement('div');
       box.className = 'preview-box';
       
-      const isVideo = path.toLowerCase().endsWith('.mp4') || path.toLowerCase().endsWith('.webm') || path.toLowerCase().endsWith('.mov');
+      const isVideo = currentPath.toLowerCase().endsWith('.mp4') || currentPath.toLowerCase().endsWith('.webm') || currentPath.toLowerCase().endsWith('.mov');
       if (isVideo) {
-        box.innerHTML = `<video src="${path}" muted preload="metadata" style="width:100%; height:100%; object-fit:cover; display:block;"></video>`;
+        box.innerHTML = `<video src="${absoluteGalleryPath}" muted preload="metadata" style="width:100%; height:100%; object-fit:cover; display:block;"></video>`;
       } else {
-        box.innerHTML = `<img src="${path}" alt="Önizleme" style="width:100%; height:100%; object-fit:cover; display:block;">`;
+        box.innerHTML = `<img src="${absoluteGalleryPath}" alt="Önizleme" style="width:100%; height:100%; object-fit:cover; display:block;">`;
       }
       
       const delBtn = document.createElement('button');
@@ -86,10 +96,9 @@ function editProject(id, folder, title, date, desc, buttonElement) {
           formData.append("path", path);
           formData.append("type", "gallery");
           
-          const res = await fetch("/admin/delete-media", { method: "POST", body: formData });
+          const res = await fetch("https://onrender.com", { method: "POST", body: formData });
           if(res.ok) {
             box.remove();
-            // KORRIGIERT: Sicherer Re-Filter des Attribut-Strings bei dynamischen Löschvorgängen
             const currentGallery = buttonElement.getAttribute('data-gallery') || "";
             const updatedGallery = currentGallery.split(',').filter(p => p !== path && p.trim() !== "").join(',');
             buttonElement.setAttribute('data-gallery', updatedGallery);
@@ -118,7 +127,7 @@ function resetFormMode() {
   document.getElementById('formMainImage').required = true;
   document.getElementById('formGalleryMedia').required = true;
 
-  document.getElementById('mainProjectForm').action = "/admin";
+  document.getElementById('mainProjectForm').action = "https://onrender.com";
   document.getElementById('formSubmitBtn').textContent = "Projeyi Kaydet ve Yayınla";
   document.getElementById('formCancelBtn').style.display = "none";
   
@@ -131,7 +140,7 @@ function resetFormMode() {
 // --- PROMPT EDITOR MODAL LOGIK ---
 async function openPromptEditor() {
   try {
-    const response = await fetch('/admin/prompt/get');
+    const response = await fetch('https://onrender.com/prompt/get');
     if (response.ok) {
       const data = await response.json();
       document.getElementById('promptTextarea').value = data.content;
@@ -154,7 +163,7 @@ async function savePromptEditor() {
   const textContent = textarea.value;
 
   try {
-    const response = await fetch('/admin/prompt/save', {
+    const response = await fetch('https://onrender.com/prompt/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: textContent })
