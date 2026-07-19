@@ -13,25 +13,35 @@ import (
 // 1. FTP-HILFSFUNKTIONEN FÜR GÜZEL-SERVER
 // ==========================================
 
-// Hilfsfunktion: Erstellt Ordnerstrukturen Schritt für Schritt auf dem FTP-Server
-func mkdirAllFTP(client *ftp.ServerConn, path string) error {
-	// Ersetzt Backslashes für Linux-Kompatibilität auf Güzel
-	cleanPath := strings.ReplaceAll(path, "\\", "/")
-	parts := strings.Split(cleanPath, "/")
+// Hilfsfunktion: Wechselt Schritt für Schritt in Ordner und erstellt sie, falls sie fehlen
+func mkdirAllFTP(client *ftp.ServerConn, basePath string, targetFolder string) error {
+	// 1. Zuerst ins Hauptverzeichnis wechseln, um eine saubere Ausgangslage zu haben
+	_ = client.ChangeDir("/")
 
-	currentPath := ""
-	for _, part := range parts {
+	// 2. Den bestehenden Basispfad (public_html/static/images) in Stufen betreten
+	baseParts := strings.Split(basePath, "/")
+	for _, part := range baseParts {
 		if part == "" {
 			continue
 		}
-		if currentPath == "" {
-			currentPath = part
-		} else {
-			currentPath = currentPath + "/" + part
+		err := client.ChangeDir(part)
+		if err != nil {
+			// Falls der Basisordner wider Erwarten fehlt, erstellen und betreten
+			_ = client.MakeDir(part)
+			_ = client.ChangeDir(part)
 		}
-		// Erstellt den Teilordner. Fehler (z.B. Ordner existiert bereits) werden ignoriert.
-		_ = client.MakeDir(currentPath)
 	}
+
+	// 3. Jetzt sind wir im Ordner "public_html/static/images".
+	// Hier erstellen wir den spezifischen Projektordner (z.B. "ahade")
+	_ = client.MakeDir(targetFolder)
+
+	// 4. In den neu erstellten Projektordner hineinwechseln
+	err := client.ChangeDir(targetFolder)
+	if err != nil {
+		return fmt.Errorf("Konnte nicht in den Zielordner wechseln: %v", err)
+	}
+
 	return nil
 }
 
@@ -45,12 +55,11 @@ func uploadToGuzelViaFTP(localPath, remoteFolder, fileName string) error {
 		return fmt.Errorf("FTP-Zugangsdaten nicht konfiguriert")
 	}
 
-	// KORRIGIERT: Verbindung herstellen mit Timeout UND Deaktivierung von EPSV.
-	// Das zwingt die Verbindung in den normalen Passiv-Modus (PASV), den DirectAdmin erwartet.
+	// Verbindung mit sicherem Firewall-Timeout aufbauen
 	client, err := ftp.Dial(
 		ftpHost,
-		ftp.DialWithTimeout(5*time.Second),
-		ftp.DialWithDisabledEPSV(true),
+		ftp.DialWithTimeout(15*time.Second),
+		ftp.DialWithDisabledEPSV(true), // Zwingt den Datenkanal in den stabilen PASV-Modus
 	)
 	if err != nil {
 		return fmt.Errorf("FTP Dial Fehler: %v", err)
@@ -64,26 +73,26 @@ func uploadToGuzelViaFTP(localPath, remoteFolder, fileName string) error {
 		return fmt.Errorf("FTP Login Fehler: %v", err)
 	}
 
-	// In das Hauptverzeichnis wechseln
-	_ = client.ChangeDir("/")
-
-	// Rekursive Ordnererstellung
-	remoteBasePath := fmt.Sprintf("public_html/static/images/%s", remoteFolder)
-	err = mkdirAllFTP(client, remoteBasePath)
+	// 🔥 DIE KORREKTUR: Ordnerstruktur sicher von unten nach oben aufbauen und betreten
+	basePath := "public_html/static/images"
+	err = mkdirAllFTP(client, basePath, remoteFolder)
 	if err != nil {
-		return fmt.Errorf("FTP-Ordnererstellung fehlgeschlagen: %v", err)
+		return fmt.Errorf("FTP-Ordnerverwaltung fehlgeschlagen: %v", err)
 	}
 
+	// Da wir durch mkdirAllFTP bereits im richtigen Zielordner stehen,
+	// öffnen wir die lokale Bilddatei auf Render
 	localFile, err := os.Open(localPath)
 	if err != nil {
 		return fmt.Errorf("Lokale Datei konnte nicht geoeffnet werden: %v", err)
 	}
 	defer localFile.Close()
 
-	remoteFilePath := fmt.Sprintf("%s/%s", remoteBasePath, fileName)
-	err = client.Stor(remoteFilePath, localFile)
+	// 🔥 WICHTIG: Da wir uns bereits im Zielordner befinden,
+	// laden wir das Bild direkt mit dem reinen Dateinamen hoch!
+	err = client.Stor(fileName, localFile)
 	if err != nil {
-		return fmt.Errorf("FTP Upload Fehler auf Güzel: %v", err)
+		return fmt.Errorf("FTP Upload Fehler beim Speichern der Datei: %v", err)
 	}
 
 	return nil
