@@ -41,16 +41,23 @@ window.forceSessionLogout = function(redirectToHome) {
   localStorage.removeItem('admin_last_activity');
   sessionStorage.removeItem('admin_session_active');
 
-  // 2. Browser-Cache für die HTTP-Anmeldung sprengen (falsche Daten senden)
+  // 2. Browser-Cache für die HTTP-Anmeldung sprengen
   const xhr = new XMLHttpRequest();
-  xhr.open("GET", window.location.protocol + "//logout:logout@" + window.location.host + "/api/admin/logs", true);
-  xhr.send();
+  // Wir hängen einen dynamischen Zeitstempel an, um jeglichen Server-Cache zu umgehen
+  xhr.open("GET", window.location.protocol + "//logout:logout@" + window.location.host + "/api/admin/logs?t=" + Date.now(), true);
   
+  // Wenn die Anfrage abgeschlossen ist, laden wir die Seite neu
   xhr.onreadystatechange = function () {
     if (xhr.readyState === 4) {
-      window.location.reload();
+      // 3. WICHTIGE VERZÖGERUNG: Wir geben dem Browser 100ms Zeit, die ungültigen
+      // Anmeldedaten im Cache zu verarbeiten, bevor der Reload ausgeführt wird.
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
     }
   };
+  
+  xhr.send();
 };
 
 
