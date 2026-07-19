@@ -100,17 +100,19 @@ func basicAuthWrapper(next http.HandlerFunc) http.HandlerFunc {
 		username, password, ok := r.BasicAuth()
 
 		if !ok || username != expectedUser || password != expectedPass {
+			w.Header().Set("WWW-Authenticate", `Basic realm="NEXTREKLAM Admin Panel"`)
+
 			isAPI := strings.HasPrefix(r.URL.Path, "/api/") ||
 				r.Header.Get("X-Requested-With") == "XMLHttpRequest" ||
 				strings.Contains(r.Header.Get("Accept"), "application/json")
 
 			if isAPI {
 				w.WriteHeader(http.StatusUnauthorized)
-				_, _ = w.Write([]byte("Zweit-Anfrage blockiert (API-Schutz)"))
+				_, _ = w.Write([]byte("Yetkisiz Erişim! (API-Schutz)"))
 				return
 			}
 
-			w.Header().Set("WWW-Authenticate", `Basic realm="NEXTREKLAM Admin Panel"`)
+			// Normaler Seitenaufruf
 			http.Error(w, "Yetkisiz Erişim!", http.StatusUnauthorized)
 			return
 		}
