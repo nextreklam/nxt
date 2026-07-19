@@ -37,24 +37,22 @@ function resetInactivityTimer() {
 
 // Meldet den Nutzer ab, löscht die Browser-Credentials und leitet ggf. um
 window.forceSessionLogout = function(redirectToHome) {
+  // 1. Sitzungsdaten restlos aus dem Speicher des Browsers löschen
   localStorage.removeItem('admin_last_activity');
   sessionStorage.removeItem('admin_session_active');
 
-  // Trick, um den HTTP-Basic-Auth-Cache im Browser zu verwerfen
+  // 2. Browser-Cache für die HTTP-Anmeldung sprengen (falsche Daten senden)
   const xhr = new XMLHttpRequest();
-  xhr.open("GET", "/api/admin/logs", true, "logout_user_" + Date.now(), "wrong_password_clear_cache");
+  xhr.open("GET", window.location.protocol + "//logout:logout@" + window.location.host + "/api/admin/logs", true);
   xhr.send();
   
   xhr.onreadystatechange = function () {
     if (xhr.readyState === 4) {
-      if (redirectToHome) {
-        window.location.href = "/"; // Leitet unbefugte Nutzer auf die Startseite
-      } else {
-        window.location.reload(); // Lädt neu, um das Browser-Anmeldefenster zu erzwingen
-      }
+      window.location.reload();
     }
   };
 };
+
 
 // Wird aufgerufen, sobald das Backend grünes Licht gibt
 function setSessionAsValidated() {
