@@ -47,16 +47,15 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 			if err == nil {
 				defer out.Close()
 				_, _ = io.Copy(out, file)
-				mainImgPath = "/static/images/" + folder + "/" + fileName
+				mainImgPath = "static/images/" + folder + "/" + fileName
 
-				go func() {
-					errUpload := uploadToGuzelViaFTP(targetPath, folder, fileName)
-					if errUpload != nil {
-						log.Println("Kritischer FTP-Fehler für Hauptbild:", errUpload)
-					} else {
-						log.Println("Erfolg: Hauptbild via FTP auf Güzel gespeichert!")
-					}
-				}()
+				errUpload := uploadToGuzelViaFTP(targetPath, folder, fileName)
+				if errUpload != nil {
+					log.Println("Kritischer FTP-Fehler für Hauptbild:", errUpload)
+				} else {
+					log.Println("Erfolg: Hauptbild via FTP auf Güzel gespeichert!")
+				}
+
 			}
 		}
 
@@ -79,14 +78,14 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 				if err == nil {
 					defer out.Close()
 					_, _ = io.Copy(out, f)
-					galleryPaths = append(galleryPaths, "/static/images/"+folder+"/"+fileNameClean)
+					galleryPaths = append(galleryPaths, "static/images/"+folder+"/"+fileNameClean)
 
-					go func(p, fn string) {
-						errUpload := uploadToGuzelViaFTP(p, folder, fn)
-						if errUpload != nil {
-							log.Println("Kritischer FTP-Fehler für Galeriebild:", errUpload)
-						}
-					}(targetPath, fileNameClean)
+					errUpload := uploadToGuzelViaFTP(targetPath, folder, fileNameClean)
+					if errUpload != nil {
+						log.Println("Kritischer FTP-Fehler für Galeriebild:", errUpload)
+					} else {
+						log.Println("Erfolg: Galeriebild via FTP auf Güzel gespeichert!")
+					}
 				}
 			}(i, fHeader)
 		}
